@@ -147,7 +147,7 @@ public sealed class JiraApiClient : IDisposable
 
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var worklogResponse = JsonSerializer.Deserialize<JiraIssueWorklogResponse>(responseBody, _serializerOptions);
-        return worklogResponse?.Worklogs ?? Array.Empty<JiraWorklog>();
+        return worklogResponse?.Worklogs ?? new List<JiraWorklog>();
     }
 
     private static string BuildJql(DateTime startDate, DateTime endDate)
