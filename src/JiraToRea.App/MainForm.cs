@@ -48,6 +48,8 @@ public sealed class MainForm : Form
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
     private readonly Label _footerLabel;
+    private readonly FlowLayoutPanel _statusActionPanel;
+    private readonly Panel _footerContainer;
 
     public MainForm()
     {
@@ -985,9 +987,35 @@ public sealed class MainForm : Form
         _statisticsButton.Enabled = _worklogEntries.Count > 0;
     }
 
+    private void AlignFooterElements()
+    {
+        if (_footerContainer is null)
+        {
+            return;
+        }
+
+        const int horizontalPadding = 4;
+        const int verticalPadding = 4;
+
+        var containerSize = _footerContainer.ClientSize;
+
+        var statusX = Math.Max(horizontalPadding, containerSize.Width - _statusActionPanel.Width - horizontalPadding);
+        var statusY = Math.Max(verticalPadding, containerSize.Height - _statusActionPanel.Height - verticalPadding);
+        _statusActionPanel.Location = new Point(statusX, statusY);
+
+        var footerY = Math.Max(verticalPadding, containerSize.Height - _footerLabel.Height - verticalPadding);
+        _footerLabel.Location = new Point(horizontalPadding, footerY);
+    }
+
     private void SetStatus(string message)
     {
         _statusLabel.Text = message;
+        AlignFooterElements();
+    }
+
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
     }
 
     private void AnnounceEndpointCall(string source, string endpoint, string action)
