@@ -83,8 +83,15 @@ public sealed class JiraApiClient : IDisposable
         }
 
         var jql = BuildJql(startDate, endDate);
-        var requestUri = $"rest/api/3/search?jql={Uri.EscapeDataString(jql)}&fields=summary&maxResults=200";
-        using var response = await _httpClient.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
+        var searchRequest = new JiraSearchRequest
+        {
+            Jql = jql,
+            Fields = new[] { "summary" },
+            MaxResults = 200
+        };
+
+        using var content = new StringContent(JsonSerializer.Serialize(searchRequest, _serializerOptions), Encoding.UTF8, "application/json");
+        using var response = await _httpClient.PostAsync("rest/api/3/search/jql", content, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
