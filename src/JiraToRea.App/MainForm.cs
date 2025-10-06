@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
@@ -41,6 +42,10 @@ public sealed class MainForm : Form
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
     private readonly Label _footerLabel;
+
+    private readonly ContextMenuStrip _importMenu;
+    private readonly ToolStripMenuItem _importSelectedMenuItem;
+    private readonly ToolStripMenuItem _importAllMenuItem;
 
     public MainForm()
     {
@@ -293,6 +298,12 @@ public sealed class MainForm : Form
         _importButton.Size = new Size(220, 32);
         _importButton.Anchor = AnchorStyles.Left | AnchorStyles.Bottom;
 
+        _importMenu = new ContextMenuStrip();
+        _importSelectedMenuItem = new ToolStripMenuItem("Import Selected", null, ImportSelectedMenuItem_Click);
+        _importAllMenuItem = new ToolStripMenuItem("Import All", null, ImportAllMenuItem_Click);
+        _importMenu.Items.AddRange(new ToolStripItem[] { _importSelectedMenuItem, _importAllMenuItem });
+        _importButton.ContextMenuStrip = _importMenu;
+
         _selectionLabel = new Label
         {
             Text = "Selected rows count: 0",
@@ -482,17 +493,11 @@ public sealed class MainForm : Form
         }
     }
 
-    private async void ImportButton_Click(object? sender, EventArgs e)
+    private void ImportButton_Click(object? sender, EventArgs e)
     {
         if (!_reaClient.IsAuthenticated)
         {
             MessageBox.Show(this, "Önce Rea portalına giriş yapın.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-
-        if (_worklogGrid.SelectedRows.Count == 0)
-        {
-            MessageBox.Show(this, "Aktarmak için en az bir kayıt seçmelisiniz.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -504,6 +509,13 @@ public sealed class MainForm : Form
             return;
         }
 
+        _importSelectedMenuItem.Enabled = _worklogGrid.SelectedRows.Count > 0;
+        _importAllMenuItem.Enabled = _worklogEntries.Count > 0;
+        _importMenu.Show(_importButton, new Point(0, _importButton.Height));
+    }
+
+    private async void ImportSelectedMenuItem_Click(object? sender, EventArgs e)
+    {
         var selectedEntries = _worklogGrid.SelectedRows
             .Cast<DataGridViewRow>()
             .Select(row => row.DataBoundItem as WorklogEntryViewModel)
@@ -511,11 +523,41 @@ public sealed class MainForm : Form
             .Cast<WorklogEntryViewModel>()
             .ToList();
 
+        if (selectedEntries.Count == 0)
+        {
+            MessageBox.Show(this, "Aktarmak için en az bir kayıt seçmelisiniz.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        await ImportEntriesAsync(selectedEntries).ConfigureAwait(true);
+    }
+
+    private async void ImportAllMenuItem_Click(object? sender, EventArgs e)
+    {
+        if (_worklogEntries.Count == 0)
+        {
+            MessageBox.Show(this, "Aktarılacak kayıt bulunamadı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        await ImportEntriesAsync(_worklogEntries.ToList()).ConfigureAwait(true);
+    }
+
+    private async Task ImportEntriesAsync(IReadOnlyCollection<WorklogEntryViewModel> entries)
+    {
+        var userId = _reaUserIdTextBox.Text.Trim();
+        var projectId = _reaProjectComboBox.SelectedValue as string ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(projectId))
+        {
+            MessageBox.Show(this, "Rea kullanıcı ID ve proje seçimi zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
         _importButton.Enabled = false;
         UseWaitCursor = true;
         try
         {
-            foreach (var entry in selectedEntries)
+            foreach (var entry in entries)
             {
                 var timeEntry = new ReaTimeEntry
                 {
@@ -532,7 +574,7 @@ public sealed class MainForm : Form
                 await _reaClient.CreateTimeEntryAsync(timeEntry).ConfigureAwait(true);
             }
 
-            SetStatus($"{selectedEntries.Count} kayıt Rea portalına gönderildi.");
+            SetStatus($"{entries.Count} kayıt Rea portalına gönderildi.");
         }
         catch (Exception ex)
         {
@@ -558,7 +600,8 @@ public sealed class MainForm : Form
     {
         var hasSelection = _worklogGrid.SelectedRows.Count > 0;
         var hasProject = _reaProjectComboBox.SelectedItem is ReaProject;
-        _importButton.Enabled = _reaClient.IsAuthenticated && hasSelection && hasProject;
+        var hasEntries = _worklogEntries.Count > 0;
+        _importButton.Enabled = _reaClient.IsAuthenticated && hasProject && (hasSelection || hasEntries);
     }
 
     private void UpdateStatisticsButtonState()
