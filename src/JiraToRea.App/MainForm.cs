@@ -670,7 +670,7 @@ public sealed class MainForm : Form
             var profile = await _reaClient.GetUserProfileAsync().ConfigureAwait(true);
             _reaUserIdTextBox.Text = profile.UserId;
 
-            var projects = await _reaClient.GetProjectsAsync(profile.UserId).ConfigureAwait(true);
+            var projects = await _reaClient.GetProjectsAsync().ConfigureAwait(true);
 
             _reaProjects.Clear();
             foreach (var project in projects.OrderBy(p => p.DisplayName, StringComparer.CurrentCultureIgnoreCase))
