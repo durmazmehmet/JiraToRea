@@ -109,7 +109,7 @@ public sealed class MainForm : Form
             DisplayMember = nameof(ReaProject.DisplayName),
             ValueMember = nameof(ReaProject.Id)
         };
-        _reaProjectComboBox.SelectedIndexChanged += (_, _) => UpdateImportButtonState();
+        _reaProjectComboBox.SelectedIndexChanged += ReaProjectComboBox_SelectedIndexChanged;
         _reaLoginButton = CreateButton("Login", ReaLoginButton_Click);
         _reaLogoutButton = CreateButton("Logout", ReaLogoutButton_Click);
         _reaLogoutButton.Enabled = false;
@@ -497,12 +497,56 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(footerPanel, 0, 3);
 
-        _startDatePicker.Value = DateTime.Today.AddDays(-7);
-        _startTimePicker.Value = DateTime.Today;
-        _endDatePicker.Value = DateTime.Today;
-        _endTimePicker.Value = DateTime.Now;
+        SetDefaultDateRange();
 
         UpdateStatisticsButtonState();
+    }
+
+    private void SetDefaultDateRange()
+    {
+        var today = DateTime.Today;
+        var daysSinceMonday = (7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7;
+        var thisWeekMonday = today.AddDays(-daysSinceMonday);
+        var lastWeekSunday = thisWeekMonday.AddDays(-1);
+
+        _startDatePicker.Value = lastWeekSunday;
+        _startTimePicker.Value = lastWeekSunday.Date;
+        _endDatePicker.Value = thisWeekMonday;
+        _endTimePicker.Value = thisWeekMonday.AddHours(8);
+    }
+
+    private void ReaProjectComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        UpdateImportButtonState();
+
+        if (_reaProjectComboBox.SelectedItem is ReaProject project)
+        {
+            _userSettings.ReaProjectId = project.Id;
+        }
+    }
+
+    private void ApplySavedReaProjectSelection()
+    {
+        if (_reaProjects.Count == 0)
+        {
+            _reaProjectComboBox.SelectedIndex = -1;
+            return;
+        }
+
+        var savedProjectId = _userSettings.ReaProjectId;
+        if (!string.IsNullOrWhiteSpace(savedProjectId))
+        {
+            for (var i = 0; i < _reaProjects.Count; i++)
+            {
+                if (string.Equals(_reaProjects[i].Id, savedProjectId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _reaProjectComboBox.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
+        _reaProjectComboBox.SelectedIndex = 0;
     }
 
     private static TextBox CreateTextBox(string text)
@@ -602,6 +646,11 @@ public sealed class MainForm : Form
             await _jiraClient.LoginAsync(email, token).ConfigureAwait(true);
             _jiraLogoutButton.Enabled = true;
             SetStatus($"Jira girişi başarılı. {_jiraClient.DisplayName}");
+
+            if (_reaClient.IsAuthenticated)
+            {
+                await RefreshReaMetadataAsync().ConfigureAwait(true);
+            }
         }
         catch (Exception ex)
         {
@@ -1029,7 +1078,8 @@ public sealed class MainForm : Form
             ReaUsername = _reaUsernameTextBox.Text,
             ReaPassword = _reaPasswordTextBox.Text,
             JiraEmail = _jiraEmailTextBox.Text,
-            JiraToken = _jiraTokenTextBox.Text
+            JiraToken = _jiraTokenTextBox.Text,
+            ReaProjectId = (_reaProjectComboBox.SelectedItem as ReaProject)?.Id ?? _userSettings.ReaProjectId
         };
 
         _userSettings = settings;
@@ -1060,7 +1110,7 @@ public sealed class MainForm : Form
 
             if (_reaProjects.Count > 0)
             {
-                _reaProjectComboBox.SelectedIndex = 0;
+                ApplySavedReaProjectSelection();
             }
             else
             {
