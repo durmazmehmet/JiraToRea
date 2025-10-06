@@ -32,6 +32,7 @@ public sealed class MainForm : Form
     private readonly DateTimePicker _endDatePicker;
     private readonly Button _findButton;
     private readonly Button _importButton;
+    private readonly Button _statisticsButton;
     private readonly DataGridView _worklogGrid;
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
@@ -52,6 +53,8 @@ public sealed class MainForm : Form
         };
 
         Controls.Add(mainPanel);
+
+        _worklogEntries.ListChanged += (_, _) => UpdateStatisticsButtonState();
 
         var reaGroup = new GroupBox
         {
@@ -188,11 +191,17 @@ public sealed class MainForm : Form
         _findButton.Location = new Point(710, 18);
         _findButton.Width = 100;
 
+        _statisticsButton = CreateButton("Meraklısına İstatistik", StatisticsButton_Click);
+        _statisticsButton.Location = new Point(820, 18);
+        _statisticsButton.Width = 180;
+        _statisticsButton.Enabled = false;
+
         mainPanel.Controls.Add(new Label { Text = "Start Date", Location = new Point(330, 0), AutoSize = true });
         mainPanel.Controls.Add(_startDatePicker);
         mainPanel.Controls.Add(new Label { Text = "End Date", Location = new Point(520, 0), AutoSize = true });
         mainPanel.Controls.Add(_endDatePicker);
         mainPanel.Controls.Add(_findButton);
+        mainPanel.Controls.Add(_statisticsButton);
 
         _worklogGrid = new DataGridView
         {
@@ -301,6 +310,8 @@ public sealed class MainForm : Form
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _endDatePicker.Value = DateTime.Today;
+
+        UpdateStatisticsButtonState();
     }
 
     private static TextBox CreateTextBox(string text)
@@ -534,6 +545,11 @@ public sealed class MainForm : Form
         _importButton.Enabled = _reaClient.IsAuthenticated && hasSelection && hasProject;
     }
 
+    private void UpdateStatisticsButtonState()
+    {
+        _statisticsButton.Enabled = _worklogEntries.Count > 0;
+    }
+
     private void SetStatus(string message)
     {
         _statusLabel.Text = message;
@@ -579,5 +595,17 @@ public sealed class MainForm : Form
         {
             UpdateImportButtonState();
         }
+    }
+
+    private void StatisticsButton_Click(object? sender, EventArgs e)
+    {
+        if (_worklogEntries.Count == 0)
+        {
+            MessageBox.Show(this, "İstatistik oluşturmak için kayıt bulunmuyor.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var statisticsForm = new WorklogStatisticsForm(_worklogEntries.ToList());
+        statisticsForm.ShowDialog(this);
     }
 }
