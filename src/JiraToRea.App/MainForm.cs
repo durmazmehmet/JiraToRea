@@ -43,6 +43,7 @@ public sealed class MainForm : Form
     private readonly Button _statisticsButton;
     private readonly Button _importSelectedButton;
     private readonly Button _importAllButton;
+    private readonly Button _cancelAllButton;
     private readonly DataGridView _worklogGrid;
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
@@ -408,9 +409,17 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
+        var kankiLabel = new Label
+        {
+            Text = "Kanki burada.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(60, 60, 60),
+            Anchor = AnchorStyles.Left
+        };
+
         _statusLabel = new Label
         {
-            Text = "Hazır",
+            Text = "Hazır kanki",
             AutoSize = true,
             ForeColor = Color.FromArgb(60, 60, 60),
             Anchor = AnchorStyles.Left
@@ -433,10 +442,28 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 10, 0, 0)
         };
 
+        statusPanel.Controls.Add(kankiLabel);
         statusPanel.Controls.Add(_statusLabel);
         statusPanel.Controls.Add(_footerLabel);
 
-        rightPanel.Controls.Add(statusPanel, 0, 3);
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(10, 10, 0, 0);
+        _cancelAllButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+        var statusContainer = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 2
+        };
+
+        statusContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        statusContainer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        statusContainer.Controls.Add(statusPanel, 0, 0);
+        statusContainer.Controls.Add(_cancelAllButton, 1, 0);
+
+        rightPanel.Controls.Add(statusContainer, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
@@ -707,6 +734,39 @@ public sealed class MainForm : Form
             UpdateImportButtonState();
             UpdateSelectionInfo();
         }
+    }
+
+    private void CancelAndLogoutButton_Click(object? sender, EventArgs e)
+    {
+        UseWaitCursor = false;
+        Cursor = Cursors.Default;
+        LogoutFromAllServices();
+        _findButton.Enabled = true;
+        SetStatus("İşlem iptal edildi. Kanki tüm oturumları kapattı.");
+    }
+
+    private void LogoutFromAllServices()
+    {
+        if (_reaClient.IsAuthenticated)
+        {
+            _reaClient.Logout();
+            _reaLoginButton.Enabled = true;
+            _reaLogoutButton.Enabled = false;
+            _reaUserIdTextBox.Clear();
+            _reaProjects.Clear();
+            _reaProjectComboBox.SelectedIndex = -1;
+        }
+
+        if (_jiraClient.IsAuthenticated)
+        {
+            _jiraClient.Logout();
+            _jiraLoginButton.Enabled = true;
+            _jiraLogoutButton.Enabled = false;
+            _worklogEntries.Clear();
+        }
+
+        UpdateImportButtonState();
+        UpdateSelectionInfo();
     }
 
     private async Task RefreshExistingReaEntriesForCurrentRangeAsync(bool forceRefresh = false)
