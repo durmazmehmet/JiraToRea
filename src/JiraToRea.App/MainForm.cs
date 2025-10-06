@@ -606,36 +606,7 @@ public sealed class MainForm : Form
             return;
         }
 
-        var builder = new StringBuilder();
-
-        var totalHours = _worklogEntries.Sum(entry => entry.EffortHours);
-        builder.AppendLine($"Toplam Saat: {totalHours:N2}");
-
-        var dailyGroups = _worklogEntries
-            .GroupBy(entry => entry.StartDate.Date)
-            .OrderBy(group => group.Key);
-
-        builder.AppendLine();
-        builder.AppendLine("Günlük Toplamlar:");
-        foreach (var group in dailyGroups)
-        {
-            var dayHours = group.Sum(entry => entry.EffortHours);
-            builder.AppendLine($"  {group.Key:d}: {dayHours:N2}");
-        }
-
-        var taskGroups = _worklogEntries
-            .GroupBy(entry => string.IsNullOrWhiteSpace(entry.Task) ? "(Görev Yok)" : entry.Task.Trim())
-            .OrderByDescending(group => group.Sum(entry => entry.EffortHours))
-            .ThenBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase);
-
-        builder.AppendLine();
-        builder.AppendLine("Task Bazında Toplamlar:");
-        foreach (var group in taskGroups)
-        {
-            var taskHours = group.Sum(entry => entry.EffortHours);
-            builder.AppendLine($"  {group.Key}: {taskHours:N2}");
-        }
-
-        MessageBox.Show(this, builder.ToString(), "Meraklısına İstatistik", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        using var statisticsForm = new WorklogStatisticsForm(_worklogEntries.ToList());
+        statisticsForm.ShowDialog(this);
     }
 }
