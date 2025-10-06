@@ -13,8 +13,11 @@ public sealed class MainForm : Form
 {
     private readonly ReaApiClient _reaClient = new();
     private readonly JiraApiClient _jiraClient = new();
+    private readonly UserSettingsService _settingsService = new();
     private readonly BindingList<WorklogEntryViewModel> _worklogEntries = new();
     private readonly BindingList<ReaProject> _reaProjects = new();
+
+    private UserSettings _userSettings = new();
 
     private readonly TextBox _reaUsernameTextBox;
     private readonly TextBox _reaPasswordTextBox;
@@ -38,6 +41,8 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
+        _userSettings = _settingsService.Load();
+
         Text = "Jira To Rea Portal";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(1100, 650);
@@ -59,8 +64,13 @@ public sealed class MainForm : Form
             Size = new Size(300, 230)
         };
 
-        _reaUsernameTextBox = CreateTextBox("mehmet.durmaz");
+        var reaUsername = string.IsNullOrWhiteSpace(_userSettings.ReaUsername)
+            ? "mehmet.durmaz"
+            : _userSettings.ReaUsername;
+
+        _reaUsernameTextBox = CreateTextBox(reaUsername);
         _reaPasswordTextBox = CreatePasswordTextBox();
+        _reaPasswordTextBox.Text = _userSettings.ReaPassword;
         _reaUserIdTextBox = CreateTextBox(string.Empty);
         _reaUserIdTextBox.ReadOnly = true;
         _reaUserIdTextBox.TabStop = false;
@@ -121,8 +131,9 @@ public sealed class MainForm : Form
             Size = new Size(300, 200)
         };
 
-        _jiraEmailTextBox = CreateTextBox(string.Empty);
+        _jiraEmailTextBox = CreateTextBox(_userSettings.JiraEmail);
         _jiraTokenTextBox = CreatePasswordTextBox();
+        _jiraTokenTextBox.Text = _userSettings.JiraToken;
         _jiraTokenTextBox.UseSystemPasswordChar = true;
         _jiraLoginButton = CreateButton("Login", JiraLoginButton_Click);
         _jiraLogoutButton = CreateButton("Logout", JiraLogoutButton_Click);
@@ -531,6 +542,13 @@ public sealed class MainForm : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         base.OnFormClosed(e);
+        _settingsService.Save(new UserSettings
+        {
+            ReaUsername = _reaUsernameTextBox.Text,
+            ReaPassword = _reaPasswordTextBox.Text,
+            JiraEmail = _jiraEmailTextBox.Text,
+            JiraToken = _jiraTokenTextBox.Text
+        });
         _reaClient.Dispose();
         _jiraClient.Dispose();
     }
