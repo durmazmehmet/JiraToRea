@@ -16,6 +16,7 @@ public sealed class MainForm : Form
     private readonly ReaApiClient _reaClient = new();
     private readonly JiraApiClient _jiraClient = new();
     private readonly UserSettingsService _settingsService = new();
+    private readonly ImportLogger _importLogger = new();
     private readonly BindingList<WorklogEntryViewModel> _worklogEntries = new();
     private readonly BindingList<ReaProject> _reaProjects = new();
 
@@ -604,10 +605,12 @@ public sealed class MainForm : Form
                 await _reaClient.CreateTimeEntryAsync(timeEntry).ConfigureAwait(true);
             }
 
+            _importLogger.LogImport(userId, projectId, entries, success: true);
             SetStatus($"{entries.Count} kayıt Rea portalına gönderildi.");
         }
         catch (Exception ex)
         {
+            _importLogger.LogImport(userId, projectId, entries, success: false, errorMessage: ex.Message);
             MessageBox.Show(this, ex.Message, "Rea Portal", MessageBoxButtons.OK, MessageBoxIcon.Error);
             SetStatus("Rea portal aktarımı sırasında hata oluştu.");
         }
