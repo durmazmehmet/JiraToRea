@@ -119,7 +119,7 @@ public sealed class JiraApiClient : IDisposable
                 }
 
                 var localStart = startedUtc.ToLocalTime();
-                if (localStart.Date < startDate.Date || localStart.Date > endDate.Date)
+                if (localStart < startDate || localStart > endDate)
                 {
                     continue;
                 }
@@ -159,8 +159,10 @@ public sealed class JiraApiClient : IDisposable
 
     private static string BuildJql(DateTime startDate, DateTime endDate)
     {
-        var start = startDate.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
-        var end = endDate.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
+        var startDateOnly = startDate.Date;
+        var endDateOnly = endDate.Date;
+        var start = startDateOnly.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
+        var end = endDateOnly.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
         return $"worklogAuthor = currentUser() AND worklogDate >= \"{start}\" AND worklogDate <= \"{end}\"";
     }
 

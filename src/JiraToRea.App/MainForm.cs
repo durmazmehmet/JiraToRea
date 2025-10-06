@@ -33,7 +33,9 @@ public sealed class MainForm : Form
     private readonly Button _jiraLogoutButton;
 
     private readonly DateTimePicker _startDatePicker;
+    private readonly DateTimePicker _startTimePicker;
     private readonly DateTimePicker _endDatePicker;
+    private readonly DateTimePicker _endTimePicker;
     private readonly Button _findButton;
     private readonly Button _importButton;
     private readonly Button _statisticsButton;
@@ -190,15 +192,45 @@ public sealed class MainForm : Form
         _startDatePicker = new DateTimePicker
         {
             Format = DateTimePickerFormat.Short,
-            Location = new Point(330, 20),
             Width = 120
+        };
+        _startTimePicker = new DateTimePicker
+        {
+            Format = DateTimePickerFormat.Custom,
+            CustomFormat = "HH:mm",
+            ShowUpDown = true,
+            Width = 80
         };
         _endDatePicker = new DateTimePicker
         {
             Format = DateTimePickerFormat.Short,
-            Location = new Point(520, 20),
             Width = 120
         };
+        _endTimePicker = new DateTimePicker
+        {
+            Format = DateTimePickerFormat.Custom,
+            CustomFormat = "HH:mm",
+            ShowUpDown = true,
+            Width = 80
+        };
+
+        var startFilterPanel = new FlowLayoutPanel
+        {
+            Location = new Point(330, 20),
+            AutoSize = true,
+            WrapContents = false
+        };
+        startFilterPanel.Controls.Add(_startDatePicker);
+        startFilterPanel.Controls.Add(_startTimePicker);
+
+        var endFilterPanel = new FlowLayoutPanel
+        {
+            Location = new Point(520, 20),
+            AutoSize = true,
+            WrapContents = false
+        };
+        endFilterPanel.Controls.Add(_endDatePicker);
+        endFilterPanel.Controls.Add(_endTimePicker);
         _findButton = CreateButton("Find", FindButton_Click);
         _findButton.Location = new Point(710, 18);
         _findButton.Width = 100;
@@ -208,10 +240,10 @@ public sealed class MainForm : Form
         _statisticsButton.Width = 180;
         _statisticsButton.Enabled = false;
 
-        mainPanel.Controls.Add(new Label { Text = "Start Date", Location = new Point(330, 0), AutoSize = true });
-        mainPanel.Controls.Add(_startDatePicker);
-        mainPanel.Controls.Add(new Label { Text = "End Date", Location = new Point(520, 0), AutoSize = true });
-        mainPanel.Controls.Add(_endDatePicker);
+        mainPanel.Controls.Add(new Label { Text = "Start Date & Time", Location = new Point(330, 0), AutoSize = true });
+        mainPanel.Controls.Add(startFilterPanel);
+        mainPanel.Controls.Add(new Label { Text = "End Date & Time", Location = new Point(520, 0), AutoSize = true });
+        mainPanel.Controls.Add(endFilterPanel);
         mainPanel.Controls.Add(_findButton);
         mainPanel.Controls.Add(_statisticsButton);
 
@@ -321,7 +353,9 @@ public sealed class MainForm : Form
         mainPanel.Controls.Add(_footerLabel);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
+        _startTimePicker.Value = DateTime.Today;
         _endDatePicker.Value = DateTime.Today;
+        _endTimePicker.Value = DateTime.Now;
 
         UpdateStatisticsButtonState();
     }
@@ -453,8 +487,8 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
-            var startDate = _startDatePicker.Value.Date;
-            var endDate = _endDatePicker.Value.Date;
+            var startDate = _startDatePicker.Value.Date + _startTimePicker.Value.TimeOfDay;
+            var endDate = _endDatePicker.Value.Date + _endTimePicker.Value.TimeOfDay;
             var worklogs = await _jiraClient.GetWorklogsAsync(startDate, endDate).ConfigureAwait(true);
 
             _worklogEntries.Clear();
