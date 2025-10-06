@@ -14,7 +14,7 @@ public sealed class ReaApiClient : IDisposable
 {
     private const string LoginEndpoint = "api/Auth/Login";
     private const string UserProfileEndpoint = "api/Auth/GetUserProfileInfo";
-    private const string ProjectListEndpoint = "api/Project/GetAllProjectWithProp";
+    private const string ProjectListEndpoint = "api/Project/GetAll";
     private const string TimeEntryEndpoint = "api/TimeSheet/Create";
 
     private readonly HttpClient _httpClient;
@@ -70,16 +70,13 @@ public sealed class ReaApiClient : IDisposable
         return new ReaUserProfile(userId, name);
     }
 
-    public async Task<IReadOnlyList<ReaProject>> GetProjectsAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ReaProject>> GetProjectsAsync(string? userId = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            throw new ArgumentException("User ID is required to load projects.", nameof(userId));
-        }
-
         EnsureAuthenticated();
 
-        var requestUri = $"{ProjectListEndpoint}?userId={Uri.EscapeDataString(userId)}";
+        var requestUri = string.IsNullOrWhiteSpace(userId)
+            ? ProjectListEndpoint
+            : $"{ProjectListEndpoint}?userId={Uri.EscapeDataString(userId)}";
         using var response = await _httpClient.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
         var responseBody = await EnsureSuccessAndReadContentAsync(response, "retrieve the Rea project list", cancellationToken).ConfigureAwait(false);
 
