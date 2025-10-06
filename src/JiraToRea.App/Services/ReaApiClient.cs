@@ -83,24 +83,27 @@ public sealed class ReaApiClient : IDisposable
         using var response = await _httpClient.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
         var responseBody = await EnsureSuccessAndReadContentAsync(response, "retrieve the Rea project list", cancellationToken).ConfigureAwait(false);
 
-        using var jsonDocument = JsonDocument.Parse(responseBody);
-        var dataElement = ExtractDataElement(jsonDocument.RootElement);
-
         var projects = new List<ReaProject>();
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var item in EnumerateProjectObjects(dataElement))
+        if (!TryParseProjectsFromEnvelope(responseBody, projects, seenIds))
         {
-            var id = FindString(item, "projectId", "id");
-            if (string.IsNullOrWhiteSpace(id) || !seenIds.Add(id))
+            using var jsonDocument = JsonDocument.Parse(responseBody);
+            var dataElement = ExtractDataElement(jsonDocument.RootElement);
+
+            foreach (var item in EnumerateProjectObjects(dataElement))
             {
-                continue;
+                var id = FindString(item, "projectId", "id");
+                if (string.IsNullOrWhiteSpace(id) || !seenIds.Add(id))
+                {
+                    continue;
+                }
+
+                var name = FindString(item, "projectName", "name", "title") ?? id;
+                var code = FindString(item, "projectCode", "code", "shortName", "key", "projectKey");
+
+                projects.Add(new ReaProject(id, name, code));
             }
-
-            var name = FindString(item, "projectName", "name", "title") ?? id;
-            var code = FindString(item, "projectCode", "code", "shortName", "key", "projectKey");
-
-            projects.Add(new ReaProject(id, name, code));
         }
 
         return projects;
@@ -340,6 +343,51 @@ public sealed class ReaApiClient : IDisposable
                 {
                     return nested;
                 }
+            }
+        }
+
+        return null;
+    }
+
+    private bool TryParseProjectsFromEnvelope(string responseBody, List<ReaProject> projects, HashSet<string> seenIds)
+    {
+        try
+        {
+            var envelope = JsonSerializer.Deserialize<ReaApiResponse<List<ReaProjectPayload>>>(responseBody, _serializerOptions);
+            if (envelope?.Data is { Count: > 0 } payloads)
+            {
+                foreach (var payload in payloads)
+                {
+                    var id = FirstNonEmpty(payload.ProjectId, payload.Id);
+                    if (string.IsNullOrWhiteSpace(id) || !seenIds.Add(id))
+                    {
+                        continue;
+                    }
+
+                    var name = FirstNonEmpty(payload.ProjectName, payload.Name, payload.Title) ?? id;
+                    var code = FirstNonEmpty(payload.ProjectCode, payload.Code, payload.ShortName, payload.Key, payload.ProjectKey);
+
+                    projects.Add(new ReaProject(id, name, code));
+                }
+
+                return projects.Count > 0;
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignore and fall back to the resilient JSON element parsing logic below.
+        }
+
+        return false;
+    }
+
+    private static string? FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
             }
         }
 
