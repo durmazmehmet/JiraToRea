@@ -541,14 +541,19 @@ public sealed class MainForm : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
-        base.OnFormClosed(e);
-        _settingsService.Save(new UserSettings
+        var settings = new UserSettings
         {
             ReaUsername = _reaUsernameTextBox.Text,
             ReaPassword = _reaPasswordTextBox.Text,
             JiraEmail = _jiraEmailTextBox.Text,
             JiraToken = _jiraTokenTextBox.Text
-        });
+        };
+
+        _userSettings = settings;
+
+        base.OnFormClosed(e);
+
+        _settingsService.Save(settings);
         _reaClient.Dispose();
         _jiraClient.Dispose();
     }
