@@ -31,14 +31,26 @@ public sealed class DateOnlyJsonConverter : JsonConverter<DateTime>
             return new DateTime(ticks);
         }
 
-        var rawValue = reader.TokenType == JsonTokenType.String
-            ? reader.GetString() ?? string.Empty
-            : reader.GetRawText();
-        throw new JsonException($"Unable to convert token '{rawValue}' to a date using format '{DateFormat}'.");
+        throw new JsonException($"Unable to convert token '{FormatTokenValue(reader)}' to a date using format '{DateFormat}'.");
     }
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
     {
         writer.WriteStringValue(value.ToString(DateFormat, CultureInfo.InvariantCulture));
+    }
+
+    private static string FormatTokenValue(in Utf8JsonReader reader)
+    {
+        return reader.TokenType switch
+        {
+            JsonTokenType.String => reader.GetString() ?? string.Empty,
+            JsonTokenType.Number when reader.TryGetInt64(out var integerValue) => integerValue.ToString(CultureInfo.InvariantCulture),
+            JsonTokenType.Number when reader.TryGetDouble(out var doubleValue) => doubleValue.ToString(CultureInfo.InvariantCulture),
+            JsonTokenType.True => bool.TrueString,
+            JsonTokenType.False => bool.FalseString,
+            JsonTokenType.Null => "null",
+            JsonTokenType.None => string.Empty,
+            _ => reader.TokenType.ToString()
+        };
     }
 }
