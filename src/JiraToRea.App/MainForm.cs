@@ -409,18 +409,12 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
-        var statHighlightPanel = new Panel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = Color.FromArgb(255, 235, 238),
-            Margin = new Padding(0, 0, 0, 6),
-            Padding = new Padding(8, 4, 8, 4)
-        };
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(10, 0, 0, 0);
 
-        var statLabel = new Label
+        var actionLabel = new Label
         {
-            Text = "Hazır",
+            Text = "Aksiyonlar:",
             AutoSize = true,
             ForeColor = Color.FromArgb(178, 34, 34),
             Font = new Font(Font, FontStyle.Bold),
@@ -428,7 +422,19 @@ public sealed class MainForm : Form
             Anchor = AnchorStyles.Left
         };
 
-        statHighlightPanel.Controls.Add(statLabel);
+        var actionPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0, 0, 0, 6),
+            Padding = new Padding(8, 4, 8, 4)
+        };
+
+        actionPanel.Controls.Add(actionLabel);
+        actionPanel.Controls.Add(_cancelAllButton);
 
         _statusLabel = new Label
         {
@@ -455,7 +461,7 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 10, 0, 0)
         };
 
-        statusPanel.Controls.Add(statHighlightPanel);
+        statusPanel.Controls.Add(actionPanel);
         statusPanel.Controls.Add(_statusLabel);
         statusPanel.Controls.Add(_footerLabel);
 
