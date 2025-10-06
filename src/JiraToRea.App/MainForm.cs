@@ -220,10 +220,6 @@ public sealed class MainForm : Form
             Width = 80
         };
 
-        _startDatePicker.ValueChanged += DateRangePicker_ValueChanged;
-        _startTimePicker.ValueChanged += DateRangePicker_ValueChanged;
-        _endDatePicker.ValueChanged += DateRangePicker_ValueChanged;
-        _endTimePicker.ValueChanged += DateRangePicker_ValueChanged;
 
         var startFilterPanel = new FlowLayoutPanel
         {
@@ -506,6 +502,11 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            if (_reaClient.IsAuthenticated)
+            {
+                await RefreshExistingReaEntriesForCurrentRangeAsync().ConfigureAwait(true);
+            }
+
             var startDate = _startDatePicker.Value.Date + _startTimePicker.Value.TimeOfDay;
             var endDate = _endDatePicker.Value.Date + _endTimePicker.Value.TimeOfDay;
             var worklogs = await _jiraClient.GetWorklogsAsync(startDate, endDate).ConfigureAwait(true);
@@ -529,16 +530,6 @@ public sealed class MainForm : Form
             _findButton.Enabled = true;
             UpdateSelectionInfo();
         }
-    }
-
-    private async void DateRangePicker_ValueChanged(object? sender, EventArgs e)
-    {
-        if (!_reaClient.IsAuthenticated)
-        {
-            return;
-        }
-
-        await RefreshExistingReaEntriesForCurrentRangeAsync().ConfigureAwait(true);
     }
 
     private void ImportButton_Click(object? sender, EventArgs e)
