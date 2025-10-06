@@ -409,6 +409,33 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(10, 0, 0, 0);
+
+        var actionLabel = new Label
+        {
+            Text = "Aksiyonlar:",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(178, 34, 34),
+            Font = new Font(Font, FontStyle.Bold),
+            BackColor = Color.Transparent,
+            Anchor = AnchorStyles.Left
+        };
+
+        var actionPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0, 0, 0, 6),
+            Padding = new Padding(8, 4, 8, 4)
+        };
+
+        actionPanel.Controls.Add(actionLabel);
+        actionPanel.Controls.Add(_cancelAllButton);
+
         _statusLabel = new Label
         {
             Text = "Hazır",
