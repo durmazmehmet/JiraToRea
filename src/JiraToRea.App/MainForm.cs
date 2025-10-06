@@ -14,11 +14,12 @@ public sealed class MainForm : Form
     private readonly ReaApiClient _reaClient = new();
     private readonly JiraApiClient _jiraClient = new();
     private readonly BindingList<WorklogEntryViewModel> _worklogEntries = new();
+    private readonly BindingList<ReaProject> _reaProjects = new();
 
     private readonly TextBox _reaUsernameTextBox;
     private readonly TextBox _reaPasswordTextBox;
     private readonly TextBox _reaUserIdTextBox;
-    private readonly TextBox _reaProjectIdTextBox;
+    private readonly ComboBox _reaProjectComboBox;
     private readonly Button _reaLoginButton;
     private readonly Button _reaLogoutButton;
 
@@ -61,7 +62,18 @@ public sealed class MainForm : Form
         _reaUsernameTextBox = CreateTextBox("mehmet.durmaz");
         _reaPasswordTextBox = CreatePasswordTextBox();
         _reaUserIdTextBox = CreateTextBox(string.Empty);
-        _reaProjectIdTextBox = CreateTextBox(string.Empty);
+        _reaUserIdTextBox.ReadOnly = true;
+        _reaUserIdTextBox.TabStop = false;
+
+        _reaProjectComboBox = new ComboBox
+        {
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            DataSource = _reaProjects,
+            DisplayMember = nameof(ReaProject.DisplayName),
+            ValueMember = nameof(ReaProject.Id)
+        };
+        _reaProjectComboBox.SelectedIndexChanged += (_, _) => UpdateImportButtonState();
         _reaLoginButton = CreateButton("Login", ReaLoginButton_Click);
         _reaLogoutButton = CreateButton("Logout", ReaLogoutButton_Click);
         _reaLogoutButton.Enabled = false;
@@ -87,8 +99,8 @@ public sealed class MainForm : Form
         reaLayout.Controls.Add(_reaPasswordTextBox, 1, 1);
         reaLayout.Controls.Add(new Label { Text = "User ID", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 2);
         reaLayout.Controls.Add(_reaUserIdTextBox, 1, 2);
-        reaLayout.Controls.Add(new Label { Text = "Project ID", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 3);
-        reaLayout.Controls.Add(_reaProjectIdTextBox, 1, 3);
+        reaLayout.Controls.Add(new Label { Text = "Project", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 3);
+        reaLayout.Controls.Add(_reaProjectComboBox, 1, 3);
 
         var reaButtonPanel = new FlowLayoutPanel
         {
@@ -327,6 +339,7 @@ public sealed class MainForm : Form
             await _reaClient.LoginAsync(username, password).ConfigureAwait(true);
             _reaLogoutButton.Enabled = true;
             SetStatus($"Rea portal giriş başarılı. ({username})");
+            await RefreshReaMetadataAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -346,6 +359,9 @@ public sealed class MainForm : Form
         _reaClient.Logout();
         _reaLoginButton.Enabled = true;
         _reaLogoutButton.Enabled = false;
+        _reaUserIdTextBox.Clear();
+        _reaProjects.Clear();
+        _reaProjectComboBox.SelectedIndex = -1;
         SetStatus("Rea portal oturumu kapatıldı.");
         UpdateImportButtonState();
     }
@@ -443,10 +459,10 @@ public sealed class MainForm : Form
         }
 
         var userId = _reaUserIdTextBox.Text.Trim();
-        var projectId = _reaProjectIdTextBox.Text.Trim();
+        var projectId = _reaProjectComboBox.SelectedValue as string ?? string.Empty;
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(projectId))
         {
-            MessageBox.Show(this, "Rea kullanıcı ID ve proje ID alanları zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "Rea kullanıcı ID ve proje seçimi zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -502,7 +518,9 @@ public sealed class MainForm : Form
 
     private void UpdateImportButtonState()
     {
-        _importButton.Enabled = _reaClient.IsAuthenticated && _worklogGrid.SelectedRows.Count > 0;
+        var hasSelection = _worklogGrid.SelectedRows.Count > 0;
+        var hasProject = _reaProjectComboBox.SelectedItem is ReaProject;
+        _importButton.Enabled = _reaClient.IsAuthenticated && hasSelection && hasProject;
     }
 
     private void SetStatus(string message)
@@ -515,5 +533,40 @@ public sealed class MainForm : Form
         base.OnFormClosed(e);
         _reaClient.Dispose();
         _jiraClient.Dispose();
+    }
+
+    private async Task RefreshReaMetadataAsync()
+    {
+        try
+        {
+            var profile = await _reaClient.GetUserProfileAsync().ConfigureAwait(true);
+            _reaUserIdTextBox.Text = profile.UserId;
+
+            var projects = await _reaClient.GetProjectsAsync(profile.UserId).ConfigureAwait(true);
+
+            _reaProjects.Clear();
+            foreach (var project in projects.OrderBy(p => p.DisplayName, StringComparer.CurrentCultureIgnoreCase))
+            {
+                _reaProjects.Add(project);
+            }
+
+            if (_reaProjects.Count > 0)
+            {
+                _reaProjectComboBox.SelectedIndex = 0;
+            }
+            else
+            {
+                SetStatus("Rea profilinde atanmış proje bulunamadı.");
+            }
+        }
+        catch (Exception metadataEx)
+        {
+            MessageBox.Show(this, metadataEx.Message, "Rea Portal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            SetStatus("Rea profil bilgileri alınamadı.");
+        }
+        finally
+        {
+            UpdateImportButtonState();
+        }
     }
 }

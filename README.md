@@ -5,6 +5,7 @@ Windows Forms uygulaması Jira Cloud üzerinde seçilen tarih aralığındaki wo
 ## Özellikler
 
 - Rea Portal ve Jira için ayrı giriş alanları
+- Rea Portal kullanıcı ID ve projelerini giriş sonrası otomatik olarak yükleme
 - Tarih aralığına göre Jira worklog kayıtlarını listeleme
 - Worklog bilgilerini düzenleyebilme
 - Seçilen kayıtları Rea Portal `TimeSheet/Create` servisine gönderme
@@ -19,7 +20,7 @@ Windows Forms uygulaması Jira Cloud üzerinde seçilen tarih aralığındaki wo
 
 ## Yapılandırma
 
-- Rea Portal sekmesinde kullanıcı adı/şifre ile giriş yaptıktan sonra kullanıcı ve proje ID değerlerini girmeniz gerekir.
+- Rea Portal sekmesinde kullanıcı adı/şifre ile giriş yaptıktan sonra kullanıcı ID otomatik olarak doldurulur ve atanmış projeler listesinden seçim yapabilirsiniz.
 - Jira sekmesinde e-posta ve Atlassian API token bilgilerini kullanarak giriş yapabilirsiniz.
 
 ## Uyarı

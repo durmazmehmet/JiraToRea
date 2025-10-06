@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -16,6 +17,18 @@ public sealed class JiraSearchResponse
 {
     [JsonPropertyName("issues")]
     public List<JiraIssue> Issues { get; set; } = new();
+}
+
+public sealed class JiraSearchRequest
+{
+    [JsonPropertyName("jql")]
+    public string Jql { get; set; } = string.Empty;
+
+    [JsonPropertyName("fields")]
+    public IEnumerable<string> Fields { get; set; } = Array.Empty<string>();
+
+    [JsonPropertyName("maxResults")]
+    public int MaxResults { get; set; }
 }
 
 public sealed class JiraIssue
