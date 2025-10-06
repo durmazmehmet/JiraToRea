@@ -189,15 +189,19 @@ public sealed class MainForm : Form
 
         _startDatePicker = new DateTimePicker
         {
-            Format = DateTimePickerFormat.Short,
+            Format = DateTimePickerFormat.Custom,
+            CustomFormat = "dd.MM.yyyy HH:mm",
+            ShowUpDown = true,
             Location = new Point(330, 20),
-            Width = 120
+            Width = 160
         };
         _endDatePicker = new DateTimePicker
         {
-            Format = DateTimePickerFormat.Short,
+            Format = DateTimePickerFormat.Custom,
+            CustomFormat = "dd.MM.yyyy HH:mm",
+            ShowUpDown = true,
             Location = new Point(520, 20),
-            Width = 120
+            Width = 160
         };
         _findButton = CreateButton("Find", FindButton_Click);
         _findButton.Location = new Point(710, 18);
@@ -208,9 +212,9 @@ public sealed class MainForm : Form
         _statisticsButton.Width = 180;
         _statisticsButton.Enabled = false;
 
-        mainPanel.Controls.Add(new Label { Text = "Start Date", Location = new Point(330, 0), AutoSize = true });
+        mainPanel.Controls.Add(new Label { Text = "Start Date & Time", Location = new Point(330, 0), AutoSize = true });
         mainPanel.Controls.Add(_startDatePicker);
-        mainPanel.Controls.Add(new Label { Text = "End Date", Location = new Point(520, 0), AutoSize = true });
+        mainPanel.Controls.Add(new Label { Text = "End Date & Time", Location = new Point(520, 0), AutoSize = true });
         mainPanel.Controls.Add(_endDatePicker);
         mainPanel.Controls.Add(_findButton);
         mainPanel.Controls.Add(_statisticsButton);
@@ -321,7 +325,7 @@ public sealed class MainForm : Form
         mainPanel.Controls.Add(_footerLabel);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
-        _endDatePicker.Value = DateTime.Today;
+        _endDatePicker.Value = DateTime.Now;
 
         UpdateStatisticsButtonState();
     }
@@ -453,8 +457,8 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
-            var startDate = _startDatePicker.Value.Date;
-            var endDate = _endDatePicker.Value.Date;
+            var startDate = _startDatePicker.Value;
+            var endDate = _endDatePicker.Value;
             var worklogs = await _jiraClient.GetWorklogsAsync(startDate, endDate).ConfigureAwait(true);
 
             _worklogEntries.Clear();
