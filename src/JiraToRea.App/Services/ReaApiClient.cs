@@ -120,25 +120,72 @@ public sealed class ReaApiClient : IDisposable
     {
         using var jsonDocument = JsonDocument.Parse(responseBody);
         var root = jsonDocument.RootElement;
-        if (root.TryGetProperty("token", out var tokenElement) && tokenElement.ValueKind == JsonValueKind.String)
+
+        if (TryGetToken(root, out var token))
         {
-            return tokenElement.GetString();
+            return token;
         }
 
         if (root.TryGetProperty("data", out var dataElement))
         {
             if (dataElement.ValueKind == JsonValueKind.String)
             {
+                if (TryParseStringAsJson(dataElement.GetString(), out var parsedData) && TryGetToken(parsedData, out token))
+                {
+                    return token;
+                }
+
                 return dataElement.GetString();
             }
 
-            if (dataElement.ValueKind == JsonValueKind.Object && dataElement.TryGetProperty("token", out var nestedToken) && nestedToken.ValueKind == JsonValueKind.String)
+            if (TryGetToken(dataElement, out token))
             {
-                return nestedToken.GetString();
+                return token;
             }
         }
 
         return null;
+    }
+
+    private static bool TryGetToken(JsonElement element, out string? token)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                if (IsPropertyName(property.Name, "token") || IsPropertyName(property.Name, "accessToken"))
+                {
+                    if (property.Value.ValueKind == JsonValueKind.String)
+                    {
+                        token = property.Value.GetString();
+                        return !string.IsNullOrWhiteSpace(token);
+                    }
+                }
+            }
+        }
+
+        token = null;
+        return false;
+    }
+
+    private static bool TryParseStringAsJson(string? value, out JsonElement element)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(value);
+                element = document.RootElement.Clone();
+                return true;
+            }
+            catch (JsonException)
+            {
+                // Ignore and fall through to return false below.
+            }
+        }
+
+        element = default;
+        return false;
     }
 
     public void Dispose()
