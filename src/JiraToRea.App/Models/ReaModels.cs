@@ -38,3 +38,39 @@ public sealed class ReaTimeEntry
     [JsonPropertyName("comment")]
     public string Comment { get; set; } = string.Empty;
 }
+
+public sealed class ReaUserProfile
+{
+    public ReaUserProfile(string userId, string? name)
+    {
+        UserId = userId;
+        Name = name ?? string.Empty;
+    }
+
+    public string UserId { get; }
+
+    public string Name { get; }
+}
+
+public sealed class ReaProject
+{
+    public ReaProject(string id, string name, string? code)
+    {
+        Id = id;
+        Name = name;
+        Code = code ?? string.Empty;
+    }
+
+    public string Id { get; }
+
+    public string Name { get; }
+
+    public string Code { get; }
+
+    [JsonIgnore]
+    public string DisplayName => string.IsNullOrWhiteSpace(Code)
+        ? Name
+        : $"{Code} - {Name}";
+
+    public override string ToString() => DisplayName;
+}
