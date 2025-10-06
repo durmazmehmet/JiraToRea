@@ -508,6 +508,8 @@ public sealed class MainForm : Form
                 _worklogEntries.Add(entry);
             }
 
+            _worklogGrid.ClearSelection();
+            UpdateSelectionInfo();
             SetStatus($"{worklogs.Count} adet worklog yüklendi.");
         }
         catch (Exception ex)
