@@ -57,9 +57,9 @@ public sealed class MainForm : Form
 
         Text = "Jira To Rea Portal";
         StartPosition = FormStartPosition.CenterScreen;
-        Size = new Size(1100, 650);
-        MinimumSize = new Size(1100, 650);
-        MaximumSize = new Size(1100, 650);
+        Size = new Size(1230, 650);
+        MinimumSize = new Size(1230, 650);
+        MaximumSize = new Size(1230, 650);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
 
