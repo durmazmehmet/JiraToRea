@@ -18,6 +18,7 @@ public sealed class MainForm : Form
     private readonly UserSettingsService _settingsService = new();
     private readonly BindingList<WorklogEntryViewModel> _worklogEntries = new();
     private readonly BindingList<ReaProject> _reaProjects = new();
+    private readonly Dictionary<DateRangeKey, List<ReaTimeEntry>> _reaTimeEntryCache = new();
 
     private UserSettings _userSettings = new();
 
@@ -219,6 +220,7 @@ public sealed class MainForm : Form
             Width = 80
         };
 
+
         var startFilterPanel = new FlowLayoutPanel
         {
             Location = new Point(330, 20),
@@ -418,6 +420,7 @@ public sealed class MainForm : Form
             await _reaClient.LoginAsync(username, password).ConfigureAwait(true);
             _reaLogoutButton.Enabled = true;
             SetStatus($"Rea portal giriş başarılı. ({username})");
+            _reaTimeEntryCache.Clear();
             await RefreshReaMetadataAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
@@ -436,6 +439,7 @@ public sealed class MainForm : Form
     private void ReaLogoutButton_Click(object? sender, EventArgs e)
     {
         _reaClient.Logout();
+        _reaTimeEntryCache.Clear();
         _reaLoginButton.Enabled = true;
         _reaLogoutButton.Enabled = false;
         _reaUserIdTextBox.Clear();
@@ -498,6 +502,11 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            if (_reaClient.IsAuthenticated)
+            {
+                await RefreshExistingReaEntriesForCurrentRangeAsync(forceRefresh: true).ConfigureAwait(true);
+            }
+
             var startDate = _startDatePicker.Value.Date + _startTimePicker.Value.TimeOfDay;
             var endDate = _endDatePicker.Value.Date + _endTimePicker.Value.TimeOfDay;
             var worklogs = await _jiraClient.GetWorklogsAsync(startDate, endDate).ConfigureAwait(true);
@@ -587,24 +596,43 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            var rangeKey = GetCurrentDateRangeKey();
+            var existingEntries = await EnsureReaEntriesCachedAsync(rangeKey, userId, forceRefresh: true).ConfigureAwait(true);
+
+            var sentCount = 0;
+            var skippedCount = 0;
+
             foreach (var entry in entries)
             {
+                if (IsDuplicateWithExistingEntry(entry, existingEntries, userId, projectId))
+                {
+                    skippedCount++;
+                    continue;
+                }
+
                 var timeEntry = new ReaTimeEntry
                 {
                     Id = 0,
                     UserId = userId,
                     ProjectId = projectId,
                     Task = entry.Task,
-                    StartDate = entry.StartDate,
-                    EndDate = entry.EndDate,
+                    StartDate = entry.StartDate.Date,
+                    EndDate = entry.EndDate.Date,
                     Effort = entry.EffortHours,
                     Comment = entry.Comment
                 };
 
                 await _reaClient.CreateTimeEntryAsync(timeEntry).ConfigureAwait(true);
+                sentCount++;
+                existingEntries.Add(ConvertToCachedEntry(entry, userId, projectId));
             }
 
-            SetStatus($"{entries.Count} kayıt Rea portalına gönderildi.");
+            if (skippedCount > 0)
+            {
+                MessageBox.Show(this, $"{skippedCount} kayıt Rea portalında bulunduğu için gönderilmedi.", "Rea Portal", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
+            UpdateImportStatus(sentCount, skippedCount);
         }
         catch (Exception ex)
         {
@@ -616,6 +644,173 @@ public sealed class MainForm : Form
             UseWaitCursor = false;
             UpdateImportButtonState();
             UpdateSelectionInfo();
+        }
+    }
+
+    private async Task RefreshExistingReaEntriesForCurrentRangeAsync(bool forceRefresh = false)
+    {
+        if (!_reaClient.IsAuthenticated)
+        {
+            return;
+        }
+
+        var userId = _reaUserIdTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var rangeKey = GetCurrentDateRangeKey();
+        _ = await EnsureReaEntriesCachedAsync(rangeKey, userId, forceRefresh).ConfigureAwait(true);
+    }
+
+    private async Task<List<ReaTimeEntry>> EnsureReaEntriesCachedAsync(DateRangeKey rangeKey, string userId, bool forceRefresh = false)
+    {
+        if (!forceRefresh && _reaTimeEntryCache.TryGetValue(rangeKey, out var cachedEntries))
+        {
+            return cachedEntries;
+        }
+
+        if (string.IsNullOrWhiteSpace(userId) || !_reaClient.IsAuthenticated)
+        {
+            var emptyEntries = new List<ReaTimeEntry>();
+            _reaTimeEntryCache[rangeKey] = emptyEntries;
+            return emptyEntries;
+        }
+
+        try
+        {
+            var reaEntries = await _reaClient.GetTimeEntriesAsync(userId).ConfigureAwait(true);
+            var filtered = reaEntries
+                .Where(entry => entry is not null)
+                .Select(entry => entry!)
+                .Where(entry => entry.StartDate.Date <= rangeKey.End && entry.EndDate.Date >= rangeKey.Start)
+                .ToList();
+
+            _reaTimeEntryCache[rangeKey] = filtered;
+            return filtered;
+        }
+        catch (Exception)
+        {
+            SetStatus("Rea portal kayıtları alınırken hata oluştu.");
+            _reaTimeEntryCache.Remove(rangeKey);
+            return new List<ReaTimeEntry>();
+        }
+    }
+
+    private DateRangeKey GetCurrentDateRangeKey()
+    {
+        var start = _startDatePicker.Value.Date + _startTimePicker.Value.TimeOfDay;
+        var end = _endDatePicker.Value.Date + _endTimePicker.Value.TimeOfDay;
+        return DateRangeKey.From(start, end);
+    }
+
+    private static bool IsDuplicateWithExistingEntry(WorklogEntryViewModel entry, IEnumerable<ReaTimeEntry> existingEntries, string userId, string projectId)
+    {
+        foreach (var existing in existingEntries)
+        {
+            if (existing is null)
+            {
+                continue;
+            }
+
+            if (!StringsEqual(existing.UserId, userId))
+            {
+                continue;
+            }
+
+            if (!StringsEqual(existing.ProjectId, projectId))
+            {
+                continue;
+            }
+
+            if (!StringsEqual(existing.Task, entry.Task))
+            {
+                continue;
+            }
+
+            if (!StringsEqual(existing.Comment, entry.Comment))
+            {
+                continue;
+            }
+
+            if (existing.StartDate.Date != entry.StartDate.Date || existing.EndDate.Date != entry.EndDate.Date)
+            {
+                continue;
+            }
+
+            if (EffortEquals(existing.Effort, entry.EffortHours))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeForComparison(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+
+    private static bool StringsEqual(string? left, string? right)
+    {
+        return string.Equals(NormalizeForComparison(left), NormalizeForComparison(right), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool EffortEquals(double left, double right)
+    {
+        return Math.Abs(left - right) <= 0.01;
+    }
+
+    private static ReaTimeEntry ConvertToCachedEntry(WorklogEntryViewModel entry, string userId, string projectId)
+    {
+        return new ReaTimeEntry
+        {
+            Id = 0,
+            UserId = userId,
+            ProjectId = projectId,
+            Task = entry.Task,
+            StartDate = entry.StartDate.Date,
+            EndDate = entry.EndDate.Date,
+            Effort = entry.EffortHours,
+            Comment = entry.Comment
+        };
+    }
+
+    private void UpdateImportStatus(int sentCount, int skippedCount)
+    {
+        if (sentCount > 0 && skippedCount > 0)
+        {
+            SetStatus($"{sentCount} kayıt Rea portalına gönderildi, {skippedCount} kayıt zaten mevcut olduğu için atlandı.");
+        }
+        else if (sentCount > 0)
+        {
+            SetStatus($"{sentCount} kayıt Rea portalına gönderildi.");
+        }
+        else if (skippedCount > 0)
+        {
+            SetStatus($"{skippedCount} kayıt Rea portalında bulunduğu için gönderilmedi.");
+        }
+        else
+        {
+            SetStatus("Gönderilecek kayıt bulunamadı.");
+        }
+    }
+
+    private readonly record struct DateRangeKey(DateTime Start, DateTime End)
+    {
+        public static DateRangeKey From(DateTime start, DateTime end)
+        {
+            start = start.Date;
+            end = end.Date;
+
+            if (end < start)
+            {
+                (start, end) = (end, start);
+            }
+
+            return new DateRangeKey(start, end);
         }
     }
 
@@ -686,6 +881,8 @@ public sealed class MainForm : Form
             {
                 SetStatus("Rea profilinde atanmış proje bulunamadı.");
             }
+
+            await RefreshExistingReaEntriesForCurrentRangeAsync(forceRefresh: true).ConfigureAwait(true);
         }
         catch (Exception metadataEx)
         {
