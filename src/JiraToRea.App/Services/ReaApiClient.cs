@@ -114,7 +114,7 @@ public sealed class ReaApiClient : IDisposable
         var payload = JsonSerializer.Serialize(entry, _serializerOptions);
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
         using var response = await _httpClient.PostAsync(TimeEntryEndpoint, content, cancellationToken).ConfigureAwait(false);
-        _ = await EnsureSuccessAndReadContentAsync(response, "create the Rea time entry", cancellationToken).ConfigureAwait(false);
+        var result = await EnsureSuccessAndReadContentAsync(response, "create the Rea time entry", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<ReaTimeEntry>> GetTimeEntriesAsync(string userId, CancellationToken cancellationToken = default)
