@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
+using JiraToRea.App.Serialization;
 
 namespace JiraToRea.App.Models;
 
@@ -27,9 +28,11 @@ public sealed class ReaTimeEntry
     public string Task { get; set; } = string.Empty;
 
     [JsonPropertyName("startDate")]
+    [JsonConverter(typeof(DateOnlyJsonConverter))]
     public DateTime StartDate { get; set; }
 
     [JsonPropertyName("endDate")]
+    [JsonConverter(typeof(DateOnlyJsonConverter))]
     public DateTime EndDate { get; set; }
 
     [JsonPropertyName("effort")]
