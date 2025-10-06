@@ -440,8 +440,10 @@ public sealed class MainForm : Form
         {
             Text = "Hazır",
             AutoSize = true,
-            ForeColor = Color.FromArgb(60, 60, 60),
-            Anchor = AnchorStyles.Left
+            ForeColor = Color.FromArgb(178, 34, 34),
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 4, 8, 4),
+            MaximumSize = new Size(420, 0)
         };
 
         _footerLabel = new Label
@@ -449,40 +451,45 @@ public sealed class MainForm : Form
             Text = "(c) 2024 emre incekara, 2025 mehmet durmaz",
             AutoSize = true,
             ForeColor = Color.FromArgb(100, 100, 100),
-            Anchor = AnchorStyles.Left
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 8, 12, 0)
         };
 
-        var statusPanel = new FlowLayoutPanel
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(8, 0, 0, 0);
+
+        var statusActionPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0),
+            Padding = new Padding(10, 6, 10, 6),
+            Anchor = AnchorStyles.Right
+        };
+
+        statusActionPanel.Controls.Add(_statusLabel);
+        statusActionPanel.Controls.Add(_cancelAllButton);
+
+        var footerPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
             Margin = new Padding(0, 10, 0, 0)
         };
 
-        statusPanel.Controls.Add(actionPanel);
-        statusPanel.Controls.Add(_statusLabel);
-        statusPanel.Controls.Add(_footerLabel);
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footerPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
-        _cancelAllButton.Margin = new Padding(10, 10, 0, 0);
-        _cancelAllButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        footerPanel.Controls.Add(_footerLabel, 0, 0);
+        footerPanel.Controls.Add(statusActionPanel, 1, 0);
 
-        var statusContainer = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            ColumnCount = 2
-        };
-
-        statusContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        statusContainer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-        statusContainer.Controls.Add(statusPanel, 0, 0);
-        statusContainer.Controls.Add(_cancelAllButton, 1, 0);
-
-        rightPanel.Controls.Add(statusContainer, 0, 3);
+        rightPanel.Controls.Add(footerPanel, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
