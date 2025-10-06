@@ -9,4 +9,6 @@ public sealed class UserSettings
     public string JiraEmail { get; set; } = string.Empty;
 
     public string JiraToken { get; set; } = string.Empty;
+
+    public string ReaProjectId { get; set; } = string.Empty;
 }
