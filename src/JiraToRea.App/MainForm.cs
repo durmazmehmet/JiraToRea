@@ -409,7 +409,7 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
-        var kankiHighlightPanel = new Panel
+        var statHighlightPanel = new Panel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
@@ -418,9 +418,9 @@ public sealed class MainForm : Form
             Padding = new Padding(8, 4, 8, 4)
         };
 
-        var kankiLabel = new Label
+        var statLabel = new Label
         {
-            Text = "Kanki burada.",
+            Text = "Hazır",
             AutoSize = true,
             ForeColor = Color.FromArgb(178, 34, 34),
             Font = new Font(Font, FontStyle.Bold),
@@ -428,11 +428,11 @@ public sealed class MainForm : Form
             Anchor = AnchorStyles.Left
         };
 
-        kankiHighlightPanel.Controls.Add(kankiLabel);
+        statHighlightPanel.Controls.Add(statLabel);
 
         _statusLabel = new Label
         {
-            Text = "Hazır kanki",
+            Text = "Hazır",
             AutoSize = true,
             ForeColor = Color.FromArgb(60, 60, 60),
             Anchor = AnchorStyles.Left
@@ -455,7 +455,7 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 10, 0, 0)
         };
 
-        statusPanel.Controls.Add(kankiHighlightPanel);
+        statusPanel.Controls.Add(statHighlightPanel);
         statusPanel.Controls.Add(_statusLabel);
         statusPanel.Controls.Add(_footerLabel);
 
@@ -755,7 +755,7 @@ public sealed class MainForm : Form
         Cursor = Cursors.Default;
         LogoutFromAllServices();
         _findButton.Enabled = true;
-        SetStatus("İşlem iptal edildi. Kanki tüm oturumları kapattı.");
+        SetStatus("İşlem iptal edildi. Tüm oturumlar kapatıldı.");
     }
 
     private void LogoutFromAllServices()
