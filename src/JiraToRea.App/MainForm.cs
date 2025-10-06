@@ -564,7 +564,7 @@ public sealed class MainForm : Form
         }
     }
 
-    private void ReaLogoutButton_Click(object? sender, EventArgs e)
+    private void ReaLogoutButton_Click(object? sender, EventArgs e) 
     {
         _reaClient.Logout();
         _reaTimeEntryCache.Clear();
