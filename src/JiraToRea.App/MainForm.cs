@@ -491,6 +491,7 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            AnnounceEndpointCall("Rea portal", "api/Auth/Login", "giriş yapılıyor");
             await _reaClient.LoginAsync(username, password).ConfigureAwait(true);
             _reaLogoutButton.Enabled = true;
             SetStatus($"Rea portal giriş başarılı. ({username})");
@@ -538,6 +539,7 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            AnnounceEndpointCall("Jira", "rest/api/3/myself", "kullanıcı doğrulaması yapılıyor");
             await _jiraClient.LoginAsync(email, token).ConfigureAwait(true);
             _jiraLogoutButton.Enabled = true;
             SetStatus($"Jira girişi başarılı. {_jiraClient.DisplayName}");
@@ -583,6 +585,7 @@ public sealed class MainForm : Form
 
             var startDate = _startDatePicker.Value.Date + _startTimePicker.Value.TimeOfDay;
             var endDate = _endDatePicker.Value.Date + _endTimePicker.Value.TimeOfDay;
+            AnnounceEndpointCall("Jira", "rest/api/3/search/jql", "worklog araması yapılıyor");
             var worklogs = await _jiraClient.GetWorklogsAsync(startDate, endDate).ConfigureAwait(true);
 
             _worklogEntries.Clear();
@@ -678,6 +681,7 @@ public sealed class MainForm : Form
                     Comment = entry.Comment
                 };
 
+                AnnounceEndpointCall("Rea portal", "api/TimeSheet/Create", "kayıt oluşturuluyor");
                 await _reaClient.CreateTimeEntryAsync(timeEntry).ConfigureAwait(true);
                 sentCount++;
                 existingEntries.Add(ConvertToCachedEntry(entry, userId, projectId));
@@ -738,6 +742,7 @@ public sealed class MainForm : Form
 
         try
         {
+            AnnounceEndpointCall("Rea portal", "api/TimeSheet/GetByUserId", "mevcut kayıtlar sorgulanıyor");
             var reaEntries = await _reaClient.GetTimeEntriesAsync(userId).ConfigureAwait(true);
             var filtered = reaEntries
                 .Where(entry => entry is not null)
@@ -899,6 +904,11 @@ public sealed class MainForm : Form
         _statusLabel.Text = message;
     }
 
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
+    }
+
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         var settings = new UserSettings
@@ -922,9 +932,11 @@ public sealed class MainForm : Form
     {
         try
         {
+            AnnounceEndpointCall("Rea portal", "api/Auth/GetUserProfileInfo", "kullanıcı profili alınıyor");
             var profile = await _reaClient.GetUserProfileAsync().ConfigureAwait(true);
             _reaUserIdTextBox.Text = profile.UserId;
 
+            AnnounceEndpointCall("Rea portal", "api/Project/GetAll", "proje listesi alınıyor");
             var projects = await _reaClient.GetProjectsAsync().ConfigureAwait(true);
 
             _reaProjects.Clear();
