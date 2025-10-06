@@ -43,6 +43,7 @@ public sealed class MainForm : Form
     private readonly Button _statisticsButton;
     private readonly Button _importSelectedButton;
     private readonly Button _importAllButton;
+    private readonly Button _cancelAllButton;
     private readonly DataGridView _worklogGrid;
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
@@ -412,8 +413,10 @@ public sealed class MainForm : Form
         {
             Text = "Hazır",
             AutoSize = true,
-            ForeColor = Color.FromArgb(60, 60, 60),
-            Anchor = AnchorStyles.Left
+            ForeColor = Color.FromArgb(178, 34, 34),
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 4, 8, 4),
+            MaximumSize = new Size(420, 0)
         };
 
         _footerLabel = new Label
@@ -421,22 +424,45 @@ public sealed class MainForm : Form
             Text = "(c) 2024 emre incekara, 2025 mehmet durmaz",
             AutoSize = true,
             ForeColor = Color.FromArgb(100, 100, 100),
-            Anchor = AnchorStyles.Left
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 8, 12, 0)
         };
 
-        var statusPanel = new FlowLayoutPanel
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(8, 0, 0, 0);
+
+        var statusActionPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0),
+            Padding = new Padding(10, 6, 10, 6),
+            Anchor = AnchorStyles.Right
+        };
+
+        statusActionPanel.Controls.Add(_statusLabel);
+        statusActionPanel.Controls.Add(_cancelAllButton);
+
+        var footerPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
             Margin = new Padding(0, 10, 0, 0)
         };
 
-        statusPanel.Controls.Add(_statusLabel);
-        statusPanel.Controls.Add(_footerLabel);
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footerPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        rightPanel.Controls.Add(statusPanel, 0, 3);
+        footerPanel.Controls.Add(_footerLabel, 0, 0);
+        footerPanel.Controls.Add(statusActionPanel, 1, 0);
+
+        rightPanel.Controls.Add(footerPanel, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
@@ -491,6 +517,7 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            AnnounceEndpointCall("Rea portal", "api/Auth/Login", "giriş yapılıyor");
             await _reaClient.LoginAsync(username, password).ConfigureAwait(true);
             _reaLogoutButton.Enabled = true;
             SetStatus($"Rea portal giriş başarılı. ({username})");
@@ -538,6 +565,7 @@ public sealed class MainForm : Form
         UseWaitCursor = true;
         try
         {
+            AnnounceEndpointCall("Jira", "rest/api/3/myself", "kullanıcı doğrulaması yapılıyor");
             await _jiraClient.LoginAsync(email, token).ConfigureAwait(true);
             _jiraLogoutButton.Enabled = true;
             SetStatus($"Jira girişi başarılı. {_jiraClient.DisplayName}");
@@ -583,6 +611,7 @@ public sealed class MainForm : Form
 
             var startDate = _startDatePicker.Value.Date + _startTimePicker.Value.TimeOfDay;
             var endDate = _endDatePicker.Value.Date + _endTimePicker.Value.TimeOfDay;
+            AnnounceEndpointCall("Jira", "rest/api/3/search/jql", "worklog araması yapılıyor");
             var worklogs = await _jiraClient.GetWorklogsAsync(startDate, endDate).ConfigureAwait(true);
 
             _worklogEntries.Clear();
@@ -678,6 +707,7 @@ public sealed class MainForm : Form
                     Comment = entry.Comment
                 };
 
+                AnnounceEndpointCall("Rea portal", "api/TimeSheet/Create", "kayıt oluşturuluyor");
                 await _reaClient.CreateTimeEntryAsync(timeEntry).ConfigureAwait(true);
                 sentCount++;
                 existingEntries.Add(ConvertToCachedEntry(entry, userId, projectId));
@@ -703,6 +733,39 @@ public sealed class MainForm : Form
             UpdateImportButtonState();
             UpdateSelectionInfo();
         }
+    }
+
+    private void CancelAndLogoutButton_Click(object? sender, EventArgs e)
+    {
+        UseWaitCursor = false;
+        Cursor = Cursors.Default;
+        LogoutFromAllServices();
+        _findButton.Enabled = true;
+        SetStatus("İşlem iptal edildi. Tüm oturumlar kapatıldı.");
+    }
+
+    private void LogoutFromAllServices()
+    {
+        if (_reaClient.IsAuthenticated)
+        {
+            _reaClient.Logout();
+            _reaLoginButton.Enabled = true;
+            _reaLogoutButton.Enabled = false;
+            _reaUserIdTextBox.Clear();
+            _reaProjects.Clear();
+            _reaProjectComboBox.SelectedIndex = -1;
+        }
+
+        if (_jiraClient.IsAuthenticated)
+        {
+            _jiraClient.Logout();
+            _jiraLoginButton.Enabled = true;
+            _jiraLogoutButton.Enabled = false;
+            _worklogEntries.Clear();
+        }
+
+        UpdateImportButtonState();
+        UpdateSelectionInfo();
     }
 
     private async Task RefreshExistingReaEntriesForCurrentRangeAsync(bool forceRefresh = false)
@@ -738,6 +801,7 @@ public sealed class MainForm : Form
 
         try
         {
+            AnnounceEndpointCall("Rea portal", "api/TimeSheet/GetByUserId", "mevcut kayıtlar sorgulanıyor");
             var reaEntries = await _reaClient.GetTimeEntriesAsync(userId).ConfigureAwait(true);
             var filtered = reaEntries
                 .Where(entry => entry is not null)
@@ -899,6 +963,11 @@ public sealed class MainForm : Form
         _statusLabel.Text = message;
     }
 
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
+    }
+
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         var settings = new UserSettings
@@ -922,9 +991,11 @@ public sealed class MainForm : Form
     {
         try
         {
+            AnnounceEndpointCall("Rea portal", "api/Auth/GetUserProfileInfo", "kullanıcı profili alınıyor");
             var profile = await _reaClient.GetUserProfileAsync().ConfigureAwait(true);
             _reaUserIdTextBox.Text = profile.UserId;
 
+            AnnounceEndpointCall("Rea portal", "api/Project/GetAll", "proje listesi alınıyor");
             var projects = await _reaClient.GetProjectsAsync().ConfigureAwait(true);
 
             _reaProjects.Clear();
