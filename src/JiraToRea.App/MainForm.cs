@@ -16,6 +16,7 @@ public sealed class MainForm : Form
     private readonly ReaApiClient _reaClient = new();
     private readonly JiraApiClient _jiraClient = new();
     private readonly UserSettingsService _settingsService = new();
+    private readonly ImportLogger _importLogger = new();
     private readonly BindingList<WorklogEntryViewModel> _worklogEntries = new();
     private readonly BindingList<ReaProject> _reaProjects = new();
     private readonly Dictionary<DateRangeKey, List<ReaTimeEntry>> _reaTimeEntryCache = new();
@@ -634,10 +635,12 @@ public sealed class MainForm : Form
                 MessageBox.Show(this, $"{skippedCount} kayıt Rea portalında bulunduğu için gönderilmedi.", "Rea Portal", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
-            UpdateImportStatus(sentCount, skippedCount);
+            _importLogger.LogImport(userId, projectId, entries, success: true);
+            SetStatus($"{entries.Count} kayıt Rea portalına gönderildi.");
         }
         catch (Exception ex)
         {
+            _importLogger.LogImport(userId, projectId, entries, success: false, errorMessage: ex.Message);
             MessageBox.Show(this, ex.Message, "Rea Portal", MessageBoxButtons.OK, MessageBoxIcon.Error);
             SetStatus("Rea portal aktarımı sırasında hata oluştu.");
         }
