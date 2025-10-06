@@ -38,16 +38,13 @@ public sealed class MainForm : Form
     private readonly DateTimePicker _endDatePicker;
     private readonly DateTimePicker _endTimePicker;
     private readonly Button _findButton;
-    private readonly Button _importButton;
     private readonly Button _statisticsButton;
+    private readonly Button _importSelectedButton;
+    private readonly Button _importAllButton;
     private readonly DataGridView _worklogGrid;
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
     private readonly Label _footerLabel;
-
-    private readonly ContextMenuStrip _importMenu;
-    private readonly ToolStripMenuItem _importSelectedMenuItem;
-    private readonly ToolStripMenuItem _importAllMenuItem;
 
     public MainForm()
     {
@@ -59,21 +56,29 @@ public sealed class MainForm : Form
 
         Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
 
-        var mainPanel = new Panel
+        var mainLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            ColumnCount = 2,
+            RowCount = 1
         };
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 320));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        Controls.Add(mainPanel);
+        Controls.Add(mainLayout);
 
         _worklogEntries.ListChanged += (_, _) => UpdateStatisticsButtonState();
 
         var reaGroup = new GroupBox
         {
             Text = "Rea Portal",
-            Location = new Point(10, 10),
-            Size = new Size(300, 230)
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(10),
+            Margin = new Padding(0, 0, 0, 10)
         };
 
         var reaUsername = string.IsNullOrWhiteSpace(_userSettings.ReaUsername)
@@ -139,8 +144,11 @@ public sealed class MainForm : Form
         var jiraGroup = new GroupBox
         {
             Text = "Jira",
-            Location = new Point(10, 250),
-            Size = new Size(300, 200)
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(10),
+            Margin = new Padding(0)
         };
 
         _jiraEmailTextBox = CreateTextBox(_userSettings.JiraEmail);
@@ -191,8 +199,25 @@ public sealed class MainForm : Form
 
         jiraGroup.Controls.Add(jiraLayout);
 
-        mainPanel.Controls.Add(reaGroup);
-        mainPanel.Controls.Add(jiraGroup);
+        var leftPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0)
+        };
+        leftPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        leftPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        leftPanel.Controls.Add(reaGroup, 0, 0);
+        leftPanel.Controls.Add(jiraGroup, 0, 1);
+        leftPanel.SetColumnSpan(reaGroup, 1);
+        leftPanel.SetColumnSpan(jiraGroup, 1);
+
+        mainLayout.Controls.Add(leftPanel, 0, 0);
+
+        leftPanel.Margin = new Padding(0, 0, 10, 0);
 
         _startDatePicker = new DateTimePicker
         {
@@ -221,43 +246,74 @@ public sealed class MainForm : Form
 
         var startFilterPanel = new FlowLayoutPanel
         {
-            Location = new Point(330, 20),
             AutoSize = true,
             WrapContents = false
         };
         startFilterPanel.Controls.Add(_startDatePicker);
         startFilterPanel.Controls.Add(_startTimePicker);
+        startFilterPanel.Margin = new Padding(0, 0, 20, 0);
 
         var endFilterPanel = new FlowLayoutPanel
         {
-            Location = new Point(520, 20),
             AutoSize = true,
             WrapContents = false
         };
         endFilterPanel.Controls.Add(_endDatePicker);
         endFilterPanel.Controls.Add(_endTimePicker);
+        endFilterPanel.Margin = new Padding(0, 0, 20, 0);
+
         _findButton = CreateButton("Find", FindButton_Click);
-        _findButton.Location = new Point(710, 18);
-        _findButton.Width = 100;
 
         _statisticsButton = CreateButton("Meraklısına İstatistik", StatisticsButton_Click);
-        _statisticsButton.Location = new Point(820, 18);
-        _statisticsButton.Width = 180;
         _statisticsButton.Enabled = false;
 
-        mainPanel.Controls.Add(new Label { Text = "Start Date & Time", Location = new Point(330, 0), AutoSize = true });
-        mainPanel.Controls.Add(startFilterPanel);
-        mainPanel.Controls.Add(new Label { Text = "End Date & Time", Location = new Point(520, 0), AutoSize = true });
-        mainPanel.Controls.Add(endFilterPanel);
-        mainPanel.Controls.Add(_findButton);
-        mainPanel.Controls.Add(_statisticsButton);
+        var filterPanel = new TableLayoutPanel
+        {
+            ColumnCount = 6,
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        filterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        var startLabel = new Label { Text = "Start Date & Time", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 10, 0) };
+        var endLabel = new Label { Text = "End Date & Time", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 10, 0) };
+
+        filterPanel.Controls.Add(startLabel, 0, 0);
+        filterPanel.Controls.Add(startFilterPanel, 1, 0);
+        filterPanel.Controls.Add(endLabel, 2, 0);
+        filterPanel.Controls.Add(endFilterPanel, 3, 0);
+        filterPanel.Controls.Add(_findButton, 4, 0);
+        filterPanel.Controls.Add(_statisticsButton, 5, 0);
+
+        _findButton.Margin = new Padding(0, 0, 10, 0);
+        _statisticsButton.Margin = new Padding(0);
+
+        var rightPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4
+        };
+        rightPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        rightPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rightPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        mainLayout.Controls.Add(rightPanel, 1, 0);
+
+        rightPanel.Controls.Add(filterPanel, 0, 0);
+        filterPanel.Margin = new Padding(0, 0, 0, 10);
 
         _worklogGrid = new DataGridView
         {
             AutoGenerateColumns = false,
-            Location = new Point(330, 60),
-            Size = new Size(730, 430),
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Dock = DockStyle.Fill,
             DataSource = _worklogEntries,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
@@ -318,50 +374,66 @@ public sealed class MainForm : Form
 
         _worklogGrid.SelectionChanged += (_, _) => UpdateSelectionInfo();
 
-        mainPanel.Controls.Add(_worklogGrid);
+        rightPanel.Controls.Add(_worklogGrid, 0, 1);
 
-        _importButton = CreateButton("Import To Rea Portal", ImportButton_Click);
-        _importButton.Enabled = false;
-        _importButton.Location = new Point(330, 500);
-        _importButton.Size = new Size(220, 32);
-        _importButton.Anchor = AnchorStyles.Left | AnchorStyles.Bottom;
+        _importSelectedButton = CreateButton("Import Selected", ImportSelectedButton_Click);
+        _importSelectedButton.Enabled = false;
+        _importAllButton = CreateButton("Import All", ImportAllButton_Click);
+        _importAllButton.Enabled = false;
 
-        _importMenu = new ContextMenuStrip();
-        _importSelectedMenuItem = new ToolStripMenuItem("Import Selected", null, ImportSelectedMenuItem_Click);
-        _importAllMenuItem = new ToolStripMenuItem("Import All", null, ImportAllMenuItem_Click);
-        _importMenu.Items.AddRange(new ToolStripItem[] { _importSelectedMenuItem, _importAllMenuItem });
-        _importButton.ContextMenuStrip = _importMenu;
+        var importPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(0, 10, 0, 0)
+        };
+
+        importPanel.Controls.Add(_importSelectedButton);
+        importPanel.Controls.Add(_importAllButton);
 
         _selectionLabel = new Label
         {
             Text = "Selected rows count: 0",
-            Location = new Point(570, 506),
             AutoSize = true,
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(10, 6, 0, 0)
         };
+
+        importPanel.Controls.Add(_selectionLabel);
+
+        rightPanel.Controls.Add(importPanel, 0, 2);
 
         _statusLabel = new Label
         {
             Text = "Hazır",
-            Location = new Point(330, 540),
             AutoSize = true,
             ForeColor = Color.FromArgb(60, 60, 60),
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom
+            Anchor = AnchorStyles.Left
         };
 
         _footerLabel = new Label
         {
             Text = "(c) 2024 emre incekara, 2025 mehmet durmaz",
-            Location = new Point(330, 560),
             AutoSize = true,
             ForeColor = Color.FromArgb(100, 100, 100),
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom
+            Anchor = AnchorStyles.Left
         };
 
-        mainPanel.Controls.Add(_importButton);
-        mainPanel.Controls.Add(_selectionLabel);
-        mainPanel.Controls.Add(_statusLabel);
-        mainPanel.Controls.Add(_footerLabel);
+        var statusPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Margin = new Padding(0, 10, 0, 0)
+        };
+
+        statusPanel.Controls.Add(_statusLabel);
+        statusPanel.Controls.Add(_footerLabel);
+
+        rightPanel.Controls.Add(statusPanel, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
@@ -394,7 +466,8 @@ public sealed class MainForm : Form
         var button = new Button
         {
             Text = text,
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 0, 10, 0)
         };
         button.Click += onClick;
         return button;
@@ -525,28 +598,7 @@ public sealed class MainForm : Form
         }
     }
 
-    private void ImportButton_Click(object? sender, EventArgs e)
-    {
-        if (!_reaClient.IsAuthenticated)
-        {
-            MessageBox.Show(this, "Önce Rea portalına giriş yapın.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-
-        var userId = _reaUserIdTextBox.Text.Trim();
-        var projectId = _reaProjectComboBox.SelectedValue as string ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(projectId))
-        {
-            MessageBox.Show(this, "Rea kullanıcı ID ve proje seçimi zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        _importSelectedMenuItem.Enabled = _worklogGrid.SelectedRows.Count > 0;
-        _importAllMenuItem.Enabled = _worklogEntries.Count > 0;
-        _importMenu.Show(_importButton, new Point(0, _importButton.Height));
-    }
-
-    private async void ImportSelectedMenuItem_Click(object? sender, EventArgs e)
+    private async void ImportSelectedButton_Click(object? sender, EventArgs e)
     {
         var selectedEntries = _worklogGrid.SelectedRows
             .Cast<DataGridViewRow>()
@@ -564,7 +616,7 @@ public sealed class MainForm : Form
         await ImportEntriesAsync(selectedEntries).ConfigureAwait(true);
     }
 
-    private async void ImportAllMenuItem_Click(object? sender, EventArgs e)
+    private async void ImportAllButton_Click(object? sender, EventArgs e)
     {
         if (_worklogEntries.Count == 0)
         {
@@ -585,7 +637,8 @@ public sealed class MainForm : Form
             return;
         }
 
-        _importButton.Enabled = false;
+        _importSelectedButton.Enabled = false;
+        _importAllButton.Enabled = false;
         UseWaitCursor = true;
         try
         {
@@ -633,7 +686,9 @@ public sealed class MainForm : Form
         var hasSelection = _worklogGrid.SelectedRows.Count > 0;
         var hasProject = _reaProjectComboBox.SelectedItem is ReaProject;
         var hasEntries = _worklogEntries.Count > 0;
-        _importButton.Enabled = _reaClient.IsAuthenticated && hasProject && (hasSelection || hasEntries);
+        var canImport = _reaClient.IsAuthenticated && hasProject && hasEntries;
+        _importAllButton.Enabled = canImport;
+        _importSelectedButton.Enabled = _reaClient.IsAuthenticated && hasProject && hasSelection;
     }
 
     private void UpdateStatisticsButtonState()
