@@ -409,13 +409,26 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
+        var kankiHighlightPanel = new Panel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0, 0, 0, 6),
+            Padding = new Padding(8, 4, 8, 4)
+        };
+
         var kankiLabel = new Label
         {
             Text = "Kanki burada.",
             AutoSize = true,
-            ForeColor = Color.FromArgb(60, 60, 60),
+            ForeColor = Color.FromArgb(178, 34, 34),
+            Font = new Font(Font, FontStyle.Bold),
+            BackColor = Color.Transparent,
             Anchor = AnchorStyles.Left
         };
+
+        kankiHighlightPanel.Controls.Add(kankiLabel);
 
         _statusLabel = new Label
         {
@@ -442,7 +455,7 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 10, 0, 0)
         };
 
-        statusPanel.Controls.Add(kankiLabel);
+        statusPanel.Controls.Add(kankiHighlightPanel);
         statusPanel.Controls.Add(_statusLabel);
         statusPanel.Controls.Add(_footerLabel);
 
