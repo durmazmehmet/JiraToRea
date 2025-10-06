@@ -465,7 +465,24 @@ public sealed class MainForm : Form
         statusPanel.Controls.Add(_statusLabel);
         statusPanel.Controls.Add(_footerLabel);
 
-        rightPanel.Controls.Add(statusPanel, 0, 3);
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(10, 10, 0, 0);
+        _cancelAllButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+        var statusContainer = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 2
+        };
+
+        statusContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        statusContainer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        statusContainer.Controls.Add(statusPanel, 0, 0);
+        statusContainer.Controls.Add(_cancelAllButton, 1, 0);
+
+        rightPanel.Controls.Add(statusContainer, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
