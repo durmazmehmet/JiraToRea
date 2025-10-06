@@ -260,21 +260,45 @@ public sealed class ReaApiClient : IDisposable
 
                 foreach (var property in element.EnumerateObject())
                 {
+                    if (property.Value.ValueKind == JsonValueKind.String &&
+                        TryParseJsonElement(property.Value.GetString(), out var stringElement))
+                    {
+                        foreach (var nested in EnumerateProjectObjects(stringElement))
+                        {
+                            yield return nested;
+                        }
+
+                        continue;
+                    }
+
                     foreach (var nested in EnumerateProjectObjects(property.Value))
                     {
                         yield return nested;
                     }
                 }
+
                 break;
 
             case JsonValueKind.Array:
                 foreach (var item in element.EnumerateArray())
                 {
+                    if (item.ValueKind == JsonValueKind.String &&
+                        TryParseJsonElement(item.GetString(), out var arrayItemElement))
+                    {
+                        foreach (var nested in EnumerateProjectObjects(arrayItemElement))
+                        {
+                            yield return nested;
+                        }
+
+                        continue;
+                    }
+
                     foreach (var nested in EnumerateProjectObjects(item))
                     {
                         yield return nested;
                     }
                 }
+
                 break;
         }
     }
@@ -411,6 +435,27 @@ public sealed class ReaApiClient : IDisposable
         }
 
         return value.Trim();
+    }
+
+    private static bool TryParseJsonElement(string? candidate, out JsonElement element)
+    {
+        element = default;
+
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(candidate);
+            element = document.RootElement.Clone();
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static bool IsPropertyName(string actual, string expected)
