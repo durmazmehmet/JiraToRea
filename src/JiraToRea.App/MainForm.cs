@@ -49,7 +49,7 @@ public sealed class MainForm : Form
     private readonly Label _statusLabel;
     private readonly Label _footerLabel;
     private readonly FlowLayoutPanel _statusActionPanel;
-    private readonly TableLayoutPanel _footerContainer;
+    private readonly Panel _footerContainer;
 
     public MainForm()
     {
@@ -411,6 +411,33 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(10, 0, 0, 0);
+
+        var actionLabel = new Label
+        {
+            Text = "Aksiyonlar:",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(178, 34, 34),
+            Font = new Font(Font, FontStyle.Bold),
+            BackColor = Color.Transparent,
+            Anchor = AnchorStyles.Left
+        };
+
+        var actionPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0, 0, 0, 6),
+            Padding = new Padding(8, 4, 8, 4)
+        };
+
+        actionPanel.Controls.Add(actionLabel);
+        actionPanel.Controls.Add(_cancelAllButton);
+
         _statusLabel = new Label
         {
             Text = "Hazır",
@@ -426,45 +453,45 @@ public sealed class MainForm : Form
             Text = "(c) 2024 emre incekara, 2025 mehmet durmaz",
             AutoSize = true,
             ForeColor = Color.FromArgb(100, 100, 100),
-            Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
-            Margin = new Padding(0, 0, 12, 4)
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 8, 12, 0)
         };
 
         _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
         _cancelAllButton.Margin = new Padding(8, 0, 0, 0);
 
-        _statusActionPanel = new FlowLayoutPanel
+        var statusActionPanel = new FlowLayoutPanel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             BackColor = Color.FromArgb(255, 235, 238),
-            Margin = new Padding(8, 0, 0, 4),
+            Margin = new Padding(0),
             Padding = new Padding(10, 6, 10, 6),
-            Anchor = AnchorStyles.Right | AnchorStyles.Bottom
+            Anchor = AnchorStyles.Right
         };
 
-        _statusActionPanel.Controls.Add(_statusLabel);
-        _statusActionPanel.Controls.Add(_cancelAllButton);
+        statusActionPanel.Controls.Add(_statusLabel);
+        statusActionPanel.Controls.Add(_cancelAllButton);
 
-        _footerContainer = new TableLayoutPanel
+        var footerPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 2,
-            RowCount = 1,
-            Margin = new Padding(0, 10, 0, 0),
-            Padding = new Padding(0, 0, 4, 4)
+            Margin = new Padding(0, 10, 0, 0)
         };
 
-        _footerContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        _footerContainer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        _footerContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footerPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        _footerContainer.Controls.Add(_footerLabel, 0, 0);
-        _footerContainer.Controls.Add(_statusActionPanel, 1, 0);
+        footerPanel.Controls.Add(_footerLabel, 0, 0);
+        footerPanel.Controls.Add(statusActionPanel, 1, 0);
 
-        rightPanel.Controls.Add(_footerContainer, 0, 3);
+        rightPanel.Controls.Add(footerPanel, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
@@ -539,7 +566,7 @@ public sealed class MainForm : Form
         }
     }
 
-    private void ReaLogoutButton_Click(object? sender, EventArgs e)
+    private void ReaLogoutButton_Click(object? sender, EventArgs e) 
     {
         _reaClient.Logout();
         _reaTimeEntryCache.Clear();
@@ -960,9 +987,40 @@ public sealed class MainForm : Form
         _statisticsButton.Enabled = _worklogEntries.Count > 0;
     }
 
+    private void AlignFooterElements()
+    {
+        if (_footerContainer is null)
+        {
+            return;
+        }
+
+        const int horizontalPadding = 4;
+        const int verticalPadding = 4;
+
+        var containerSize = _footerContainer.ClientSize;
+
+        var statusX = Math.Max(horizontalPadding, containerSize.Width - _statusActionPanel.Width - horizontalPadding);
+        var statusY = Math.Max(verticalPadding, containerSize.Height - _statusActionPanel.Height - verticalPadding);
+        _statusActionPanel.Location = new Point(statusX, statusY);
+
+        var footerY = Math.Max(verticalPadding, containerSize.Height - _footerLabel.Height - verticalPadding);
+        _footerLabel.Location = new Point(horizontalPadding, footerY);
+    }
+
     private void SetStatus(string message)
     {
         _statusLabel.Text = message;
+        AlignFooterElements();
+    }
+
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
+    }
+
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
     }
 
     private void AnnounceEndpointCall(string source, string endpoint, string action)

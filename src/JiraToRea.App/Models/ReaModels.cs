@@ -34,9 +34,11 @@ public sealed class ReaTimeEntry
     public int Id { get; set; }
 
     [JsonPropertyName("userId")]
+    [JsonConverter(typeof(FlexibleStringJsonConverter))]
     public string UserId { get; set; } = string.Empty;
 
     [JsonPropertyName("projectId")]
+    [JsonConverter(typeof(FlexibleStringJsonConverter))]
     public string ProjectId { get; set; } = string.Empty;
 
     [JsonPropertyName("task")]
