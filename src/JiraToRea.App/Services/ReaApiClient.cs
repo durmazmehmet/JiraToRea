@@ -131,9 +131,7 @@ public sealed class ReaApiClient : IDisposable
         using var response = await _httpClient.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
         var responseBody = await EnsureSuccessAndReadContentAsync(response, "retrieve the Rea time entries", cancellationToken).ConfigureAwait(false);
 
-        var entries = new List<ReaTimeEntry>();
-
-        if (TryDeserializeTimeEntries(responseBody, entries))
+        if (TryDeserializeTimeEntries(responseBody) is { } entries)
         {
             return entries;
         }
@@ -141,22 +139,12 @@ public sealed class ReaApiClient : IDisposable
         using var jsonDocument = JsonDocument.Parse(responseBody);
         var dataElement = ExtractDataElement(jsonDocument.RootElement);
 
-        if (dataElement.ValueKind == JsonValueKind.Array)
+        if (TryDeserializeTimeEntries(dataElement) is { } fallbackEntries)
         {
-            foreach (var item in dataElement.EnumerateArray())
-            {
-                if (TryDeserializeTimeEntry(item, out var entry))
-                {
-                    entries.Add(entry);
-                }
-            }
-        }
-        else if (TryDeserializeTimeEntry(dataElement, out var singleEntry))
-        {
-            entries.Add(singleEntry);
+            return fallbackEntries;
         }
 
-        return entries;
+        return Array.Empty<ReaTimeEntry>();
     }
 
     private static string? ExtractToken(string responseBody)
@@ -477,15 +465,14 @@ public sealed class ReaApiClient : IDisposable
         return value.Trim();
     }
 
-    private bool TryDeserializeTimeEntries(string responseBody, List<ReaTimeEntry> entries)
+    private List<ReaTimeEntry>? TryDeserializeTimeEntries(string responseBody)
     {
         try
         {
             var envelope = JsonSerializer.Deserialize<ReaApiResponse<List<ReaTimeEntry>>>(responseBody, _serializerOptions);
-            if (envelope?.Data is { Count: > 0 })
+            if (envelope?.Data is { Count: > 0 } data)
             {
-                entries.AddRange(envelope.Data);
-                return true;
+                return data;
             }
         }
         catch (JsonException)
@@ -498,8 +485,7 @@ public sealed class ReaApiClient : IDisposable
             var direct = JsonSerializer.Deserialize<List<ReaTimeEntry>>(responseBody, _serializerOptions);
             if (direct is { Count: > 0 })
             {
-                entries.AddRange(direct);
-                return true;
+                return direct;
             }
         }
         catch (JsonException)
@@ -507,31 +493,40 @@ public sealed class ReaApiClient : IDisposable
             // Ignore and fall back to resilient parsing below.
         }
 
-        return false;
+        return null;
     }
 
-    private bool TryDeserializeTimeEntry(JsonElement element, out ReaTimeEntry entry)
+    private List<ReaTimeEntry>? TryDeserializeTimeEntries(JsonElement element)
     {
         try
         {
-            if (element.ValueKind == JsonValueKind.String && TryParseJsonElement(element.GetString(), out var parsed))
+            if (element.ValueKind == JsonValueKind.Array)
             {
-                return TryDeserializeTimeEntry(parsed, out entry);
+                var items = JsonSerializer.Deserialize<List<ReaTimeEntry>>(element.GetRawText(), _serializerOptions);
+                if (items is { Count: > 0 })
+                {
+                    return items;
+                }
             }
-
-            if (element.ValueKind == JsonValueKind.Object)
+            else if (element.ValueKind == JsonValueKind.Object)
             {
-                entry = JsonSerializer.Deserialize<ReaTimeEntry>(element.GetRawText(), _serializerOptions) ?? new ReaTimeEntry();
-                return true;
+                var item = JsonSerializer.Deserialize<ReaTimeEntry>(element.GetRawText(), _serializerOptions);
+                if (item is not null)
+                {
+                    return new List<ReaTimeEntry> { item };
+                }
+            }
+            else if (element.ValueKind == JsonValueKind.String && TryParseJsonElement(element.GetString(), out var parsed))
+            {
+                return TryDeserializeTimeEntries(parsed);
             }
         }
         catch (JsonException)
         {
-            // Ignore and fall back to return false below.
+            // Ignore and fall back to return null below.
         }
 
-        entry = default!;
-        return false;
+        return null;
     }
 
     private static bool TryParseJsonElement(string? candidate, out JsonElement element)

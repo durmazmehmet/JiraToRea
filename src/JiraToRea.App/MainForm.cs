@@ -411,6 +411,33 @@ public sealed class MainForm : Form
 
         rightPanel.Controls.Add(importPanel, 0, 2);
 
+        _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
+        _cancelAllButton.Margin = new Padding(10, 0, 0, 0);
+
+        var actionLabel = new Label
+        {
+            Text = "Aksiyonlar:",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(178, 34, 34),
+            Font = new Font(Font, FontStyle.Bold),
+            BackColor = Color.Transparent,
+            Anchor = AnchorStyles.Left
+        };
+
+        var actionPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.FromArgb(255, 235, 238),
+            Margin = new Padding(0, 0, 0, 6),
+            Padding = new Padding(8, 4, 8, 4)
+        };
+
+        actionPanel.Controls.Add(actionLabel);
+        actionPanel.Controls.Add(_cancelAllButton);
+
         _statusLabel = new Label
         {
             Text = "Hazır",
@@ -433,7 +460,7 @@ public sealed class MainForm : Form
         _cancelAllButton = CreateButton("X", CancelAndLogoutButton_Click);
         _cancelAllButton.Margin = new Padding(8, 0, 0, 0);
 
-        _statusActionPanel = new FlowLayoutPanel
+        var statusActionPanel = new FlowLayoutPanel
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
@@ -441,26 +468,30 @@ public sealed class MainForm : Form
             WrapContents = false,
             BackColor = Color.FromArgb(255, 235, 238),
             Margin = new Padding(0),
-            Padding = new Padding(10, 6, 10, 6)
+            Padding = new Padding(10, 6, 10, 6),
+            Anchor = AnchorStyles.Right
         };
 
-        _statusActionPanel.Controls.Add(_statusLabel);
-        _statusActionPanel.Controls.Add(_cancelAllButton);
+        statusActionPanel.Controls.Add(_statusLabel);
+        statusActionPanel.Controls.Add(_cancelAllButton);
 
-        _footerContainer = new Panel
+        var footerPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
             Margin = new Padding(0, 10, 0, 0)
         };
 
-        _footerContainer.Controls.Add(_footerLabel);
-        _footerContainer.Controls.Add(_statusActionPanel);
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        footerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footerPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        rightPanel.Controls.Add(_footerContainer, 0, 3);
+        footerPanel.Controls.Add(_footerLabel, 0, 0);
+        footerPanel.Controls.Add(statusActionPanel, 1, 0);
 
-        _footerContainer.Resize += (_, _) => AlignFooterElements();
-        _statusActionPanel.SizeChanged += (_, _) => AlignFooterElements();
-        AlignFooterElements();
+        rightPanel.Controls.Add(footerPanel, 0, 3);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _startTimePicker.Value = DateTime.Today;
@@ -980,6 +1011,11 @@ public sealed class MainForm : Form
     {
         _statusLabel.Text = message;
         AlignFooterElements();
+    }
+
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
     }
 
     private void AnnounceEndpointCall(string source, string endpoint, string action)
