@@ -16,6 +16,7 @@ public sealed class ReaApiClient : IDisposable
     private const string UserProfileEndpoint = "api/Auth/GetUserProfileInfo";
     private const string ProjectListEndpoint = "api/Project/GetAll";
     private const string TimeEntryEndpoint = "api/TimeSheet/Create";
+    private const string TimeEntryLookupEndpoint = "api/TimeSheet/GetByUserId";
 
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web);
@@ -114,6 +115,48 @@ public sealed class ReaApiClient : IDisposable
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
         using var response = await _httpClient.PostAsync(TimeEntryEndpoint, content, cancellationToken).ConfigureAwait(false);
         _ = await EnsureSuccessAndReadContentAsync(response, "create the Rea time entry", cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<ReaTimeEntry>> GetTimeEntriesAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        EnsureAuthenticated();
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new ArgumentException("User identifier is required to retrieve Rea time entries.", nameof(userId));
+        }
+
+        var requestUri = $"{TimeEntryLookupEndpoint}?userId={Uri.EscapeDataString(userId)}";
+
+        using var response = await _httpClient.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
+        var responseBody = await EnsureSuccessAndReadContentAsync(response, "retrieve the Rea time entries", cancellationToken).ConfigureAwait(false);
+
+        var entries = new List<ReaTimeEntry>();
+
+        if (TryDeserializeTimeEntries(responseBody, entries))
+        {
+            return entries;
+        }
+
+        using var jsonDocument = JsonDocument.Parse(responseBody);
+        var dataElement = ExtractDataElement(jsonDocument.RootElement);
+
+        if (dataElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in dataElement.EnumerateArray())
+            {
+                if (TryDeserializeTimeEntry(item, out var entry))
+                {
+                    entries.Add(entry);
+                }
+            }
+        }
+        else if (TryDeserializeTimeEntry(dataElement, out var singleEntry))
+        {
+            entries.Add(singleEntry);
+        }
+
+        return entries;
     }
 
     private static string? ExtractToken(string responseBody)
@@ -432,6 +475,63 @@ public sealed class ReaApiClient : IDisposable
         }
 
         return value.Trim();
+    }
+
+    private bool TryDeserializeTimeEntries(string responseBody, List<ReaTimeEntry> entries)
+    {
+        try
+        {
+            var envelope = JsonSerializer.Deserialize<ReaApiResponse<List<ReaTimeEntry>>>(responseBody, _serializerOptions);
+            if (envelope?.Data is { Count: > 0 })
+            {
+                entries.AddRange(envelope.Data);
+                return true;
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignore and fall back to other parsing mechanisms.
+        }
+
+        try
+        {
+            var direct = JsonSerializer.Deserialize<List<ReaTimeEntry>>(responseBody, _serializerOptions);
+            if (direct is { Count: > 0 })
+            {
+                entries.AddRange(direct);
+                return true;
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignore and fall back to resilient parsing below.
+        }
+
+        return false;
+    }
+
+    private bool TryDeserializeTimeEntry(JsonElement element, out ReaTimeEntry entry)
+    {
+        try
+        {
+            if (element.ValueKind == JsonValueKind.String && TryParseJsonElement(element.GetString(), out var parsed))
+            {
+                return TryDeserializeTimeEntry(parsed, out entry);
+            }
+
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                entry = JsonSerializer.Deserialize<ReaTimeEntry>(element.GetRawText(), _serializerOptions) ?? new ReaTimeEntry();
+                return true;
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignore and fall back to return false below.
+        }
+
+        entry = default!;
+        return false;
     }
 
     private static bool TryParseJsonElement(string? candidate, out JsonElement element)
