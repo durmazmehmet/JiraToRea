@@ -34,6 +34,7 @@ public sealed class MainForm : Form
     private readonly DataGridView _worklogGrid;
     private readonly Label _selectionLabel;
     private readonly Label _statusLabel;
+    private readonly Label _footerLabel;
 
     public MainForm()
     {
@@ -272,9 +273,19 @@ public sealed class MainForm : Form
             Anchor = AnchorStyles.Left | AnchorStyles.Bottom
         };
 
+        _footerLabel = new Label
+        {
+            Text = "(c) 2024 emre incekara, 2025 mehmet durmaz",
+            Location = new Point(330, 560),
+            AutoSize = true,
+            ForeColor = Color.FromArgb(100, 100, 100),
+            Anchor = AnchorStyles.Left | AnchorStyles.Bottom
+        };
+
         mainPanel.Controls.Add(_importButton);
         mainPanel.Controls.Add(_selectionLabel);
         mainPanel.Controls.Add(_statusLabel);
+        mainPanel.Controls.Add(_footerLabel);
 
         _startDatePicker.Value = DateTime.Today.AddDays(-7);
         _endDatePicker.Value = DateTime.Today;
