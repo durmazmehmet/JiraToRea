@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -13,17 +14,29 @@ public sealed class FlexibleStringJsonConverter : JsonConverter<string?>
             case JsonTokenType.String:
                 return reader.GetString();
             case JsonTokenType.Number:
+                if (reader.TryGetInt64(out var integerValue))
+                {
+                    return integerValue.ToString(CultureInfo.InvariantCulture);
+                }
+
+                if (reader.TryGetDouble(out var doubleValue))
+                {
+                    return doubleValue.ToString(CultureInfo.InvariantCulture);
+                }
+
+                return reader.GetDouble().ToString(CultureInfo.InvariantCulture);
             case JsonTokenType.True:
+                return bool.TrueString;
             case JsonTokenType.False:
-                return reader.GetRawText();
+                return bool.FalseString;
             case JsonTokenType.Null:
-            case JsonTokenType.Undefined:
+            case JsonTokenType.None:
                 return null;
             case JsonTokenType.StartObject:
             case JsonTokenType.StartArray:
                 using (var document = JsonDocument.ParseValue(ref reader))
                 {
-                    return document.RootElement.GetRawText();
+                    return document.RootElement.ToString();
                 }
             default:
                 throw new JsonException($"Unsupported token type '{reader.TokenType}' for flexible string conversion.");
