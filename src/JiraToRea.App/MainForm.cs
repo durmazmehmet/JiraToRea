@@ -506,14 +506,17 @@ public sealed class MainForm : Form
     {
         var today = DateTime.Today;
         var daysSinceMonday = (7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7;
-        var thisWeekMonday = today.AddDays(-daysSinceMonday);
-        var lastWeekSunday = thisWeekMonday.AddDays(-1);
 
-        _startDatePicker.Value = lastWeekSunday;
-        _startTimePicker.Value = lastWeekSunday.Date;
-        _endDatePicker.Value = thisWeekMonday;
-        _endTimePicker.Value = thisWeekMonday.AddHours(8);
+        var thisWeekMonday = today.AddDays(-daysSinceMonday);
+        var lastWeekMonday = thisWeekMonday.AddDays(-7);
+        var lastWeekSunday = lastWeekMonday.AddDays(6);
+
+        _startDatePicker.Value = lastWeekMonday;
+        _startTimePicker.Value = lastWeekMonday.Date;
+        _endDatePicker.Value = lastWeekSunday;
+        _endTimePicker.Value = lastWeekSunday.AddHours(8);
     }
+
 
     private void ReaProjectComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
