@@ -1018,6 +1018,16 @@ public sealed class MainForm : Form
         SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
     }
 
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
+    }
+
+    private void AnnounceEndpointCall(string source, string endpoint, string action)
+    {
+        SetStatus($"{source} endpoint çağrısı: {endpoint} -> {action}...");
+    }
+
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         var settings = new UserSettings
